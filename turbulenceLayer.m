@@ -12,6 +12,7 @@ classdef turbulenceLayer < handle
     properties
         altitude;
         fractionnalR0;
+        layeredL0;
         windSpeed;
         windDirection;
         amplitude;
@@ -37,16 +38,18 @@ classdef turbulenceLayer < handle
         function obj = turbulenceLayer(...
                 altitude,...
                 fractionnalR0,...
+                layeredL0,...
                 windSpeed,...
                 windDirection)
             if nargin~=0
-                narginchk(1, 4)
+                narginchk(1, 5)
                 nLayer = length(altitude);
                 obj(nLayer) = turbulenceLayer;
                 for kLayer=1:nLayer
                     obj(kLayer).altitude      = altitude(kLayer);
                     obj(kLayer).fractionnalR0 = fractionnalR0(kLayer);
-                    if nargin>2
+                    obj(kLayer).layeredL0     = layeredL0(kLayer);
+                    if nargin>4
                         obj(kLayer).windSpeed     = windSpeed(kLayer);
                         obj(kLayer).windDirection = windDirection(kLayer);
                     end
@@ -59,6 +62,7 @@ classdef turbulenceLayer < handle
             for kLayer=1:nLayer
                 obj(kLayer).altitude       = gsingle( obj(kLayer).altitude );
                 obj(kLayer).fractionnalR0  = gsingle( obj(kLayer).fractionnalR0 );
+                obj(kLayer).layeredL0      = gsingle( obj(kLayer).layeredL0 );
                 obj(kLayer).windSpeed      = gsingle( obj(kLayer).windSpeed );
                 obj(kLayer).windDirection  = gsingle( obj(kLayer).windDirection );
                 obj(kLayer).amplitude      = gsingle( obj(kLayer).amplitude );
@@ -74,6 +78,7 @@ classdef turbulenceLayer < handle
             for kLayer=1:nLayer
                 obj(kLayer).altitude       = double( obj(kLayer).altitude );
                 obj(kLayer).fractionnalR0  = double( obj(kLayer).fractionnalR0 );
+                obj(kLayer).layeredL0      = double( obj(kLayer).layeredL0 );
                 obj(kLayer).windSpeed      = double( obj(kLayer).windSpeed );
                 obj(kLayer).windDirection  = double( obj(kLayer).windDirection );
                 obj(kLayer).amplitude      = double( obj(kLayer).amplitude );

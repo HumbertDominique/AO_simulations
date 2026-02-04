@@ -132,7 +132,11 @@ classdef fourierAdaptiveOptics < handle
                al(nind) = al(nind) + 0.25*sin(2*fo(nind)).^2.*(fx(nind)./fmy(nind)+fy(nind)./flx(nind)).^2.*...
                    phaseStats.spectrum(flm(nind),obj.atm);
            end
-           out(index) =  al.*averageClosedLoopAliasing(obj,fx,fy);
+           if obj.loopGain
+               out(index) =  al.*averageClosedLoopAliasing(obj,fx,fy);
+           else
+               out(index) =  al;
+           end
            out = out.*pf;
         end
         
@@ -183,6 +187,12 @@ classdef fourierAdaptiveOptics < handle
                 -fc,fc,-fc,fc);
             out = a - b;
         end
+        
+        function out = varAliasing(obj)
+            fc  = obj.fc;
+            out = quad2d( @(fx,fy) aliasingPSD(obj,fx,fy),-fc,fc,-fc,fc);
+        end
+        
         
         function out = varServoLag(obj)
             fc  = obj.fc;
@@ -364,14 +374,16 @@ classdef fourierAdaptiveOptics < handle
         
         function fao = psdDemo
             d_tel = telescope(8);
-%             d_atm = atmosphere(photometry.V,15e-2,30,'windSpeed',10,'windDirection',0);
-            d_atm = gmtAtmosphere(1);
-            fao = fourierAdaptiveOptics(d_tel,d_atm,10,5,0.5,1e-3,1e-3);
+             d_atm = atmosphere(photometry.V,15e-2,30,'windSpeed',10,'windDirection',0);
+             %d_atm.wavelength = photometry.K;
+%            d_atm = gmtAtmosphere(1);
+%            fao = fourierAdaptiveOptics(d_tel,d_atm,10,.1,0.5,1e-3,1e-3);
+            fao = fourierAdaptiveOptics(d_tel,d_atm,41,.0045*25,0.5,1e-3,2*1e-3);
             
-            pixelScaleInMas = 2.5;
+            pixelScaleInMas = 2.5*4;
             pixelScale = pixelScaleInMas*1e-3*constants.arcsec2radian/fao.atm.wavelength;
 
-            resolution = 128;
+            resolution = 81;%128;
             [fx,fy] = freqspace(resolution,'meshgrid');
             fx = pixelScale*fx*resolution/2;
             fy = pixelScale*fy*resolution/2;
@@ -393,7 +405,28 @@ classdef fourierAdaptiveOptics < handle
             subplot(2,2,4)
             imagesc(alpha,alpha,servoLagPSD(fao,fx,fy))
             colorbar
-       end
+            
+            %varFit = trapz(fy(:,1),trapz(fx(1,:),fittingPSD(fao,fx,fy),2))
+            varFit = fao.varFitting;
+            
+            %varNoise = trapz(fy(:,1),trapz(fx(1,:),noisePSD(fao,fx,fy),2))
+            varNoise = fao.varNoise;
+            
+            %varAliasing = trapz(fy(:,1),trapz(fx(1,:),aliasingPSD(fao,fx,fy),2))
+            varAliasing = fao.varAliasing;
+            
+            %varServoLag = trapz(fy(:,1),trapz(fx(1,:),servoLagPSD(fao,fx,fy),2))
+            varServoLag = fao.varServoLag;
+            
+            varTotal = varFit + varNoise + varAliasing + varServoLag;
+            
+            fprintf('Strehl-ratio through Marechal approximation: %1.2f %% \n', 100*exp(-varTotal))
+            
+            fao.image(resolution, pixelScaleInMas)
+
+            figure
+            imagesc(fao.powerSpectrumDensity(fx,fy))
+        end
         
     end
     

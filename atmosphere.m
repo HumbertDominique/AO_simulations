@@ -8,12 +8,12 @@ classdef atmosphere < hgsetget
     % wavelength, the Fried parameter r0 and the outer scale L0
     %
     % atm =
-    % atmosphere(wavelength,r0,'altitude',altitude,'fractionnalR0',fractionnalR
+    % atmosphere(wavelength,r0,'altitude',altitude,'fractionnalR0',fractionalR
     % 0) creates an atmosphere object from the wavelength, the Fried parameter
     % r0, and from the altitudes and the fractionnalR0 of the turbulence layers
     %
     % atm =
-    % atmosphere(wavelength,r0,'altitude',altitude,'fractionnalR0',fractionnalR
+    % atmosphere(wavelength,r0,'altitude',altitude,'fractionnalR0',fractionalR
     % 0,'windSpeed',windSpeed,'windDirection',windDirection) creates an
     % atmosphere object from the wavelength, the Fried parameter r0, and from
     % the altitudes, the fractionnalR0, the wind speeds and the wind directions
@@ -31,6 +31,11 @@ classdef atmosphere < hgsetget
     % atmosphere object from the wavelength, the Fried parameter r0, the outer
     % scale L0 and from the altitudes, the fractionnalR0, the wind speeds and
     % the wind directions of the turbulence layers
+    %
+    % atm = 
+    % atmosphere(...,'zenithAngle',zenithAngleinRad) streches the altitudes
+    % by 1/cos(zenithAngleInRad). The telescope field 'elevation' should be
+    % set also to zenithAngleInRad
     %
     % Example:
     %     atm = atmosphere(photometry.V,0.15,30,...
@@ -54,6 +59,10 @@ classdef atmosphere < hgsetget
         L0;
         % number of turbulence layers
         nLayer;
+        % altitudes at zenith (before stretch factor is applied) 
+        altitudeAtZenith
+        % zenith angle in radians
+        zenithAngle
         % turbulence layer object array
         layer;
         % atmosphere tag
@@ -121,12 +130,14 @@ classdef atmosphere < hgsetget
             p.addRequired('wavelength', @(x) isnumeric(x) || isa(x,'photometry') );
             p.addRequired('r0', @isnumeric);
             p.addOptional('L0', Inf, @isnumeric);
-            p.addParamValue('altitude', 0, @isnumeric);
-            p.addParamValue('fractionnalR0', 1, @isnumeric);
-            p.addParamValue('windSpeed', [], @isnumeric);
-            p.addParamValue('windDirection', [], @isnumeric);
-            p.addParamValue('logging', true, @islogical);
-            p.addParamValue('randStream', [], @(x) isempty(x) || isa(x,'RandStream') );
+            p.addParameter('altitude', 0, @isnumeric);
+            p.addParameter('fractionnalR0', 1, @isnumeric);
+            p.addParameter('layeredL0', [], @isnumeric);
+            p.addParameter('windSpeed', [], @isnumeric);
+            p.addParameter('windDirection', [], @isnumeric);
+            p.addParameter('logging', true, @islogical);
+            p.addParameter('randStream', [], @(x) isempty(x) || isa(x,'RandStream') );
+            p.addParameter('zenithAngle',0, @isnumeric);
             p.parse(lambda,r0, varargin{:});
             if isa(p.Results.wavelength,'photometry')
                 obj.p_wavelength = p.Results.wavelength.wavelength;
@@ -136,20 +147,33 @@ classdef atmosphere < hgsetget
             obj.r0 = p.Results.r0;
             obj.L0 = p.Results.L0;
             obj.nLayer = length(p.Results.altitude);
+            obj.zenithAngle = p.Results.zenithAngle;
+            % altitudes at zenith
+            obj.altitudeAtZenith = p.Results.altitude;
+            % factor in the elevation
+            strechedAltitude = obj.altitudeAtZenith/cos(obj.zenithAngle);
+            
+            if length(p.Results.layeredL0) == 1 || any(isempty(p.Results.layeredL0))
+                layeredL0 = obj.L0*ones(1,obj.nLayer);
+            else
+                layeredL0 = p.Results.layeredL0;
+            end
             if any(isempty(p.Results.windSpeed))
                 obj.layer = turbulenceLayer(...
-                    p.Results.altitude,...
-                    p.Results.fractionnalR0);
+                    strechedAltitude,...
+                    p.Results.fractionnalR0,...
+                    layeredL0);
             else
                 obj.layer = turbulenceLayer(...
-                    p.Results.altitude,...
+                    strechedAltitude,...
                     p.Results.fractionnalR0,...
+                    layeredL0,...
                     p.Results.windSpeed,...
                     p.Results.windDirection);
             end
             if p.Results.logging
                 obj.p_log = logBook.checkIn(obj);
-                display(obj);
+                %display(obj);
             end
             if isempty(p.Results.randStream)
                 obj.rngStream = RandStream('mt19937ar');
@@ -174,7 +198,7 @@ classdef atmosphere < hgsetget
             newObj = atmosphere(...
                 obj.wavelength,...
                 obj.r0,...
-                obj.L0,...
+                obj.layer(layerIndex).layeredL0,...
                 'randStream',obj.rngStream,...
                 'logging',false);
             newObj.layer = obj.layer(layerIndex);
@@ -207,12 +231,13 @@ classdef atmosphere < hgsetget
             end
             fprintf('\n')
             fprintf('----------------------------------------------------\n')
-            fprintf('  Layer   Altitude[m]   fr0    wind([m/s] [deg])   D[m]    res[px]\n')
+            fprintf('  Layer   Altitude[m]   fr0    layeredL0    wind([m/s] [deg])   D[m]    res[px]\n')
             for kLayer=1:obj.nLayer
-                fprintf('  %2d      %8.2f      %4.2f    (%5.2f %6.2f)     %5.2f    %3d\n',...
+                fprintf('  %2d      %8.2f      %4.2f    %4.2f    (%5.2f %6.2f)     %5.2f    %3d\n',...
                     kLayer,...
                     obj.layer(kLayer).altitude,...
                     obj.layer(kLayer).fractionnalR0,...
+                    obj.layer(kLayer).layeredL0,...
                     obj.layer(kLayer).windSpeed,...
                     obj.layer(kLayer).windDirection*180/pi,...
                     obj.layer(kLayer).D,...
@@ -221,13 +246,33 @@ classdef atmosphere < hgsetget
             fprintf('----------------------------------------------------\n')
             
         end
+        %% set L0
+        function set.L0(obj,val)
+        obj.L0 = val;
+        % update the L0 across all the layers
+        setLayeredL0(obj,val);
+        end
+        %% Set layered L0 property
+        function setLayeredL0(obj,val)
+            if length(val) == 1
+                for kLayer = 1:obj.nLayer
+                    obj.layer(kLayer).layeredL0 = val;
+                end
+            elseif length(val) == obj.nLayer
+                for kLayer = 1:obj.nLayer
+                    obj.layer(kLayer).layeredL0 = val(kLayer);
+                end
+            else
+                disp('VALUE INTRODUCED NOT CORRECT')
+            end
+        end
         
         %% Set/Get wavelength property
         function val = get.wavelength(obj)
             val = obj.p_wavelength;
         end
         function set.wavelength(obj,val)
-            if isa(val,'photometry')
+            if isa(val,'photometry') || isa(val,'photometry_kasp')
                 val = val.wavelength;
             end
             obj.wavelengthScale = obj.wavelength/val;
@@ -420,8 +465,8 @@ classdef atmosphere < hgsetget
             out = 1.4.*obj.r0.^(-5/6).*out;
         end
         
-        function out = fourierPhaseScreen(atm,D,nPixel,nMap)
-            %% FOURIERPHASESCREEN Phase screen computation
+        function out = fourierPhaseScreen(atm,D,nPixel,nMap,nLenslet)
+                        %% FOURIERPHASESCREEN Phase screen computation
             %
             % map = fourierPhaseScreen(atm,D,nPixel) Computes a square
             % phase screen of D meter and sampled with nPixel using the
@@ -431,12 +476,27 @@ classdef atmosphere < hgsetget
             % of atm.layer.D meter and sampled with atm.layer.nPixel using
             % the Fourier method; atm must contain only one turbulent
             % layer!
-            %
+            % 
+            % CB edit 29/04/2015
+            %--------------------------------------------------------------
+            % Added in additional functionality to produce 3 different
+            % phase screens (per nMap), 1 the full phase screen including
+            % frequencies up to the Nyquist frequency as defined by
+            % nPixel/2D, 2 a low order phase map including only those
+            % frequencies up to nLenslet/2D (i.e. the Nyquist frequency of
+            % the wavefront sensor) and 3 a high order phase map including
+            % spatial frequencies beteen nLenslet/2D and nPixel/2D.
+            % The output of the function is an nPixel x nPixel x nMap x 3
+            % matrix, where out(:,:,:,1) is the total phase screen,
+            % including all spatial frequencies. out(:,:,:,2) is the low
+            % order phase screens, and out(:,:,:,3) is the high order.
+            %--------------------------------------------------------------
             % See also atmosphere
             
             %             warning('oomao:atmosphere:fourierPhaseScreen',...
             %                 'The fourierPhaseScreen seems to have a bug, to use with care!')
             
+            % CB edit: nMap is now the 5th parameter (nLenslet is the 4th)
             if nargin<4
                 nMap = 1;
             end
@@ -447,15 +507,39 @@ classdef atmosphere < hgsetget
             
             N = 4*nPixel;
             L = (N-1)*D/(nPixel-1);
+            
             [fx,fy]  = freqspace(N,'meshgrid');
             [~,fr]  = cart2pol(fx,fy);
             fr  = fftshift(fr.*(N-1)/L./2);
-            clear fx fy fo
+            
+            % sqrt(psd) of full phase screen
             psdRoot = sqrt(phaseStats.spectrum(fr,atm)); % Phase FT magnitude
+            [idx] = find(fr==0);
+            psdRoot(idx) = 0;
+            
+            % CB edit 29/04/2015
+            %--------------------------------------------------------------
+            % Calculate low order cut-off frequency as defined by
+            % the lenslet spacing
+            if exist('nLenslet')==1
+                d = D/nLenslet;
+                fLO = 1/(2*d);
+                % Low order spectrum
+                idx = find(abs(fftshift(fx)).*(N-1)/L./2>fLO);
+                jdx = find(abs(fftshift(fy)).*(N-1)/L./2>fLO);
+                psdRoot_LO = psdRoot;
+                psdRoot_LO(idx) = 0;
+                psdRoot_LO(jdx) = 0;
+                % High order spectrum
+                psdRoot_HO = psdRoot - psdRoot_LO;
+            end
+            %--------------------------------------------------------------
+            
             %             figure
             %             imagesc(map)
             %             axis square
             %             colorbar
+            clear fx fy fo
             clear fr
             fourierSampling = 1./L;
             %                         % -- Checking the variances --
@@ -466,11 +550,30 @@ classdef atmosphere < hgsetget
             %                         disp(['Info.: Numerical variance  :',num2str(numericalVar,'%3.3f'),'rd^2'])
             %                         % -------------------------------
             u = 1:nPixel;
-            out = zeros(nPixel,nPixel,nMap);
+            
+            if exist('nLenslet')==1
+                out = zeros(nPixel,nPixel,nMap,3);
+            else
+                out = zeros(nPixel,nPixel,nMap);
+            end
+            
             for kMap=1:nMap
-                map = psdRoot.*fft2(randn(atm.rngStream,N))./N; % White noise filtering
+                WNF = fft2(randn(atm.rngStream,N))./N; % White noise filtering
+                map = psdRoot.*WNF;
                 map = real(ifft2(map).*fourierSampling).*N.^2;
-                out(:,:,kMap) = map(u,u);
+                out(:,:,kMap,1) = map(u,u);
+                % CB edit 29/04/2015
+                %----------------------------------------------------------
+                if exist('nLenslet')==1
+                    mapLO = psdRoot_LO.*WNF; % White noise filtering
+                    mapLO = real(ifft2(mapLO).*fourierSampling).*N.^2;
+                    mapHO = psdRoot_HO.*WNF; % White noise filtering
+                    mapHO = real(ifft2(mapHO).*fourierSampling).*N.^2;
+                
+                    out(:,:,kMap,2) = mapLO(u,u);
+                    out(:,:,kMap,3) = mapHO(u,u);
+                end
+                %----------------------------------------------------------
             end
         end
         function out = fourierPhaseScreenStraight(atm,D,nPixel)

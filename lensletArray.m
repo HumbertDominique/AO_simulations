@@ -25,6 +25,15 @@ classdef lensletArray < handle
         throughput=1;
         % lenslet array tag
         tag='LENSLET ARRAY';
+        
+        % extra field of view given in diffraction fwhm units for elongated
+        % spots convolution. The sky-psf on the lenlslet focal plane is
+        % extended using zero-padding, which is an approximation
+        elongatedFieldStopSize = [];
+        convKernel = false;
+
+        % amount of focus on each lenslet to produce a defocused spot
+        liftedShackHartmannFocus;
     end
     
     properties (SetObservable=true)
@@ -116,6 +125,9 @@ classdef lensletArray < handle
         %% Lenslet image sampling
         function nLensletImagePx = get.nLensletImagePx(obj)
             nLensletImagePx = ceil(obj.fieldStopSize.*obj.nyquistSampling*2);
+%             if ~isempty(obj.elongatedFieldStopSize)
+%                 nLensletImagePx = ceil((obj.fieldStopSize + obj.elongatedFieldStopSize)  .*obj.nyquistSampling*2);
+%             end
         end
 
         %% Whole lenslet array image sampling
@@ -145,7 +157,12 @@ classdef lensletArray < handle
 %                 setPhasor(obj);
 %             end
         end
-
+        function out = get.elongatedFieldStopSize(obj)
+            out = obj.elongatedFieldStopSize;
+        end
+        function set.elongatedFieldStopSize(obj,val)
+            obj.elongatedFieldStopSize = val;
+        end
         %% Number of wave pixel per lenslet
         function out = get.nLensletWavePx(obj)
             out = obj.p_nLensletWavePx;
@@ -157,9 +174,9 @@ classdef lensletArray < handle
                 obj.fieldStopSize  = obj.p_nLensletWavePx/obj.p_nyquistSampling/2;
             end
             setPhasor(obj);
-%             % set the wave reshaping index (2D to 3D)
-%             logBook.add(obj,'Set the wave reshaping index (2D to 3D)')
-        end  
+            %             % set the wave reshaping index (2D to 3D)
+            %             logBook.add(obj,'Set the wave reshaping index (2D to 3D)')
+        end
         
         function out = pixelScale(obj,src,tel)
             %% PIXELSCALE Sky pixel scale
@@ -167,6 +184,10 @@ classdef lensletArray < handle
             % out = pixelScale(obj,src,tel) returns the pixel scale
             % projected in the sky for the specified source and telescope
             % object
+            %
+            % ATTENTION: This is the "numerical" pixel scale, not the
+            % detector pixel scale which after binning may be different
+            % from this one
             
             nOutWavePx    = obj.nLensletWavePx*obj.fftPad;    % Pixel length of the output wave
             evenOdd       = rem(obj.nLensletWavePx,2);
@@ -174,7 +195,7 @@ classdef lensletArray < handle
                 nOutWavePx = nOutWavePx + evenOdd;
             end
             nOutWavePx = max(nOutWavePx,obj.nLensletWavePx);
-            out = skyAngle( (src.wavelength/tel.D)*obj.nLensletWavePx*obj.nLenslet/nOutWavePx );
+            out = skyAngle( (src.wavelength/tel.D)*obj.nLensletWavePx*obj.nLenslet/nOutWavePx);
         end
 
         function wavePrgted = propagateThrough(obj,src_in)
@@ -241,6 +262,10 @@ classdef lensletArray < handle
                 obj.nLensletWavePx = nLensletWavePx;
             end
             nLensletArray = nLensletsWavePxNGuideStar/nLensletsWavePx;
+            
+            if ~isempty(obj.liftedShackHartmannFocus)
+                val = obj.liftedShackHartmannFocus.*val;
+            end
 %             obj.nArray = nLensletArray;
             % Invocation of the zoom optics for conjugation to finite
             % distance
@@ -260,8 +285,14 @@ classdef lensletArray < handle
             wavePrgted = zeros(nOutWavePx,nLensletSquareWavePx);
             val        = val./nOutWavePx;
 %             nLensletWavePx   = obj.nLensletWavePx;
-            nLensletImagePx  = obj.nLensletImagePx;
-            nLensletsImagePx = obj.nLensletsImagePx;
+            if obj.convKernel == false
+                nLensletImagePx  = obj.nLensletImagePx;
+                nLensletsImagePx = obj.nLensletsImagePx;
+            else
+                nLensletImagePx  = obj.nLensletWavePx*obj.fftPad;
+                nLensletsImagePx = obj.nLensletWavePx*obj.fftPad*obj.nLenslet;
+            end
+            
             %%% ODD # OF PIXELS PER LENSLET
             if isempty(obj.fftPhasor)
 %                 fprintf('ODD # OF PIXELS PER LENSLET (%d) Phasor empty!\n',obj.nLensletImagePx)
@@ -283,7 +314,9 @@ classdef lensletArray < handle
                     v((0:nLensletImagePx-1)-halfLength+centerIndex) ...
                                 = false;
                 elseif nOutWavePx<nLensletImagePx
+                    if obj.convKernel == false
                     error('lensletArray:propagateThrough:size','The computed image is smaller than the expected image!')
+                    end
                 end
                 wavePrgted(v,:) = [];
                 % Back to transpose 2D
@@ -314,7 +347,9 @@ classdef lensletArray < handle
                     v((0:nLensletImagePx-1)+centerIndex-halfLength) ...
                                 = false;
                 elseif nOutWavePx<nLensletImagePx;
+                    if obj.convKernel == false
                     error('lensletArray:propagateThrough:size','The computed image is smaller than the expected image!')
+                    end
                 end
                 wavePrgted(v,:) = [];
                 % Back to transpose 2D
@@ -327,12 +362,87 @@ classdef lensletArray < handle
                 wavePrgted(:,u)  = fft(val(:,u),nOutWavePx);
                 wavePrgted(v,:) = [];
             end
-            % Back to transpose 2D
-            wavePrgted  = reshape(wavePrgted,nLensletsImagePx*nLensletArray,nLensletsImagePx).';
-%             wavePrgted = wavePrgted.*conj(wavePrgted);
+            
+                % Back to transpose 2D
+                wavePrgted  = reshape(wavePrgted,nLensletsImagePx*nLensletArray,nLensletsImagePx).';
+
             % and back to input wave array shape
             [n,m] = size(wavePrgted);
             wavePrgted = reshape(wavePrgted,[n,m/nWave,nWave]);
+
+                        
+            % extend "artificially" the lenslet fieldStopSize
+            tmp = wavePrgted;
+            if ~isempty(obj.elongatedFieldStopSize)
+                nPadPix = obj.elongatedFieldStopSize/2*obj.nyquistSampling*2;
+                [nLensletsWavePx,nLensletsWavePxNGuideStar,nWave] = size(wavePrgted);
+                if nLensletsWavePx ~= nLensletsWavePxNGuideStar
+                    nFrames = nLensletsWavePxNGuideStar / nLensletsWavePx;
+                    wavePrgted = zeros(obj.nLenslet * (obj.nLensletImagePx),obj.nLenslet * (obj.nLensletImagePx),nFrames);
+                    for iFrame = 1:nFrames
+                        wavePrgted(:,:,iFrame) = tmp(:,(iFrame-1)*nLensletsWavePx+(1:nLensletsWavePx));
+                    end
+                else
+                    nFrames = nWave;
+                end
+                
+                tmp = wavePrgted;
+                extendedFramePx = obj.nLenslet * (obj.nLensletImagePx+2*nPadPix);
+                wavePrgted = zeros(extendedFramePx,extendedFramePx,nFrames);
+                for iFrame = 1:nFrames
+                    %reshape wavePrgted in 'line'
+                    currentFrame = tmp(:,:,iFrame);
+                    currentFrame =  reshape(currentFrame,obj.nLensletImagePx,obj.nLensletImagePx*obj.nLenslet^2);
+                    %tic
+                    nPx = obj.nLensletImagePx;
+                    nL = obj.nLenslet;
+                    indices1 = zeros(nPx*nL,1);
+                    indices2 = zeros(nPx*nL^2,1);
+                    for ii = 1:nL
+                        indices1((ii-1)*nPx+1:ii*nPx) = linspace(ii,(nPx-1)*nL+ii, nPx);
+                    end
+                    for ii = 1:nL
+                        indices2((ii-1)*nL*nPx+1:ii*nL*nPx) = indices1 + (ii-1)*nL*nPx;
+                    end
+                    currentFrame = currentFrame(:, indices2);
+                    % 2D->3D
+                    currentFrame = reshape(currentFrame, nPx, nPx, nL^2);
+                    
+                    currentFrame = padarray(currentFrame,[nPadPix,nPadPix,0],0,'both');
+                    nPx = nPx + 2*nPadPix;
+                    %back to 2d
+                    currentFrame = reshape(currentFrame,nPx, nPx*nL^2);
+                    
+                    indices1 = zeros(nPx*nL,1);
+                    indices2 = zeros(nPx*nL^2,1);
+                    for ii = 1:nPx
+                        indices1((ii-1)*nL+1:ii*nL) = linspace(ii,(nL-1)*nPx+ii, nL);
+                    end
+                    
+                    for ii = 1:nL
+                        indices2((ii-1)*nL*nPx+1:ii*nL*nPx) = indices1 + (ii-1)*nL*nPx;
+                    end
+                    currentFrame = currentFrame(:,indices2);
+                    %back to square frame
+                    currentFrame = reshape(currentFrame, nPx*nL, nPx*nL);
+                    %toc
+                    wavePrgted(:,:,iFrame) = currentFrame;
+                end
+                
+                
+                if nLensletsWavePx ~= nLensletsWavePxNGuideStar
+                    tmp = wavePrgted;
+                    wavePrgted = zeros(extendedFramePx, extendedFramePx * nFrames);
+                    for iFrame = 1:nFrames
+                        wavePrgted(:,(iFrame-1) * extendedFramePx + (1:extendedFramePx)) = tmp(:,:, iFrame);
+                    end
+                    
+                    
+                end
+                
+            end
+            % end of artificially extending the lenslet fieldStopSize
+            
             if obj.sumStack
                 wavePrgted = mean(wavePrgted,3);
             end
@@ -341,8 +451,8 @@ classdef lensletArray < handle
         
         function relay(obj,src)
             wavePrgted = propagateThrough(obj,src);
-            obj.imagelets = wavePrgted.*conj(wavePrgted)*obj.throughput;
-       end
+            obj.imagelets = wavePrgted.*conj(wavePrgted)*obj.throughput;            
+        end
 
         function varargout = imagesc(obj,varargin)
         %% IMAGESC Display the lenslet imagelets
