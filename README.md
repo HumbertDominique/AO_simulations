@@ -1,8 +1,6 @@
-OOMAO
-=====
+# TM PSF-R simulations
 
-Object-Oriented, Matlab &amp; Adaptive Optics
+The simulations are based on [OOMAO](https://github.com/cmcorreia/oomao/releases/tag/v0.1). 
 
-A code developed by and for the AO community
-
-Ask your questions at: https://groups.google.com/d/forum/oomao 
+## Source code modifications
+- Added HeNe source
