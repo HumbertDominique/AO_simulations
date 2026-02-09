@@ -1,64 +1,84 @@
 clc
 clear all
+close all
 addpath('OOMAO')
 
-
-tel = telescope(1,'resolution', 100, 'fieldOfViewInArcsec',30,'samplingTime',1/500);
-
-
-wfs = shackHartmann(10,100, 0.5);
+ngs =source;
 
 
-ngs = source('wavelength',photometry.HeNe);
-science = source('wavelength',photometry.HeNe); % same source for experiment
+atm = atmosphere(photometry.HeNe, 20e-2, 30,'fractionnalR0',[0.5, 0.3, 0.2],...
+                'altitude', [0e3, 5e3, 12e3], 'windSpeed', [10, 5, 20],...
+                'windDirection', [0, pi/2, pi]);
 
+nL = 10;
+nPx = 10;
+nRes = nL*nPx;
+D = 25;
+d = D/nL;
+samplingFreq = 500;
 
-bifa = influenceFunction('monotonic', 0.75);
-dm = deformableMirror(11, 'modes', bifa, 'resolution', tel.resolution, 'validActuator', wfs.validActuator);
+tel = telescope(D,'resolution', nRes, 'fieldOfViewInArcsec',30,'samplingTime',1/samplingFreq);
 
+wfs = shackHartmann(nL,nRes, 0.85);
 
-atm = atmosphere(photometry.HeNe, 15e-2, 30, 'altitude', 5e3, 'windSpeed', 10, 'windDirection', pi/3);
+ngs = ngs.*tel*wfs;
 
+wfs.INIT;
++wfs;
+% figure
+% imagesc(wfs.camera,'parent',subplot(3,2,[1,4]))
+% slopesDisplay(wfs,'parent',subplot(3,2,[5,6]))
+wfs.camera.frameListener.Enabled = true;
+wfs.slopesListener.Enabled = true;
 
-cam = imager();
+wfs.pointingDirection = zeros(2,1);
 
+pixelScale = ngs.wavelength/(2*d*wfs.lenslets.nyquistSampling);
+tipStep = pixelScale/2;
+nStep = floor(nPx/3)*2;
+sx = zeros(1,nStep+1);
+u = 0:nStep;
 
-ngs = ngs.*tel*wfs
-science = science.*tel*cam
+wfs.camera.frameListener.Enabled = false;
+wfs.slopesListener.Enabled = false;
+warning('off', 'oomao:shackHartmann:relay')
 
-wfs.INIT
-
-calibDm = calibration(dm, wfs, ngs, ngs.wavelength);
-calibDm.threshold = 1e6;
-disp(calibDm)
-
-
-
-%% closed-loop adaptive optics
-gain = 0.5;
-dm.coefs = 0;
-ngs.logging = true;
-ngs = ngs.*tel*dm*wfs;
-figure
-h = imagesc(ngs.meanRmOpd*1e6);
-colorbar
-cam.exposureTime = 150;
-cam.clockRate = 1;
-science = science.*tel*dm*cam;
-dmCoefs = size(dm.coefs,2);
-pause(1)
-for k=1:150
-    +tel
-    +ngs
-    +science
-    dm.coefs = dm.coefs - gain*calibDm.M*wfs.slopes;
-%     dmCoefs(:,2) = dmCoefs(:,1) - gain*calibDm.M*wfs.slopes;
-%     dm.coefs = dmCoefs(:,1);
-%     dmCoefs(:,1) = dmCoefs(:,2);
-    set(h,'Cdata',ngs.meanRmOpd*1e6)
+% moves the natural guide star in the field of view and record the median slope value for each step
+for kStep=u
+    ngs.zenith = -tipStep*kStep;
+    +ngs;
     drawnow
+    sx(kStep+1) = median(wfs.slopes(1:end/2));
 end
 
-%% reporting performance
-hf = figure;
-plot(1e6*sqrt(ngs.phaseVar(1:150*2))/ngs.waveNumber,'.')
+warning('on', 'oomao:shackHartmann:relay')
+
+Ox_in = u*tipStep*constants.radian2arcsec;
+Ox_out = sx*ngs.wavelength/d/2*constants.radian2arcsec;
+
+% figure
+% plot(Ox_in, Ox_out)
+% grid on
+slopeLinCoef = polyfit(Ox_in, Ox_out, 1);
+wfs.slopesUnits = 1/slopeLinCoef(1); %This is the slope unit conversion factor
+
+% resets the star position
+ngs.zenith = 0;
+% has the wfs always aligned with the star
+wfs.pointingDirection = [];
+
+% DM, a custom influence function can be used
+bifa = influenceFunction('monotonic', 0.75);
+dm = deformableMirror(nL+1, 'modes', bifa, 'resolution', tel.resolution, 'validActuator', wfs.validActuator);
+
+
+%interaciton matrix
+wfs.camera.frameListener.Enabled = false;
+wfs.slopesListener.Enabled = false;
+
+ngs.*tel; %propagation put to, but not including DM ans wfs
+CalibSm = calibration(dm,wfs, ngs,ngs.wavelength, nL+1, 'cond', 1e2); %this is not the cevtorised implementation.
+
+
+% atm = atmosphere(photometry.HeNe, 15e-2, 30, 'altitude', 5e3, 'windSpeed', 10, 'windDirection', pi/3);
+
