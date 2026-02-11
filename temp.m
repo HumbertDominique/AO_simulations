@@ -6,16 +6,15 @@ addpath('OOMAO')
 ngs =source;
 
 
-atm = atmosphere(photometry.HeNe, 20e-2, 30,'fractionnalR0',[0.5, 0.3, 0.2],...
-                'altitude', [0e3, 5e3, 12e3], 'windSpeed', [10, 5, 20],...
-                'windDirection', [0, pi/2, pi]);
+atm = atmosphere(photometry.V,15e-2,30,'altitude',5e3,'windSpeed',10,'windDirection',pi/3);
 
-nL = 10;
-nPx = 10;
-nRes = nL*nPx;
-D = 25;
-d = D/nL;
-samplingFreq = 500;
+
+nL = 10;            % [-] Number of lenslet accross the pupil 1mmu lens/actuator
+nPx = 10;           % [-] Px per lenslet
+nRes = nL*nPx;      % [-] Resolution
+D = 25;             % [-] Telescope diameter
+d = D/nL;           % [-] Lenslet pitch
+samplingFreq = 500; % [Hz] Sampling frequency
 
 tel = telescope(D,'resolution', nRes, 'fieldOfViewInArcsec',30,'samplingTime',1/samplingFreq);
 
@@ -76,9 +75,34 @@ dm = deformableMirror(nL+1, 'modes', bifa, 'resolution', tel.resolution, 'validA
 wfs.camera.frameListener.Enabled = false;
 wfs.slopesListener.Enabled = false;
 
-ngs.*tel; %propagation put to, but not including DM ans wfs
-CalibSm = calibration(dm,wfs, ngs,ngs.wavelength, nL+1, 'cond', 1e2); %this is not the cevtorised implementation.
+ngs.*tel; % propagation ut to, but not including DM ans wfs
+CalibDm = calibration(dm,wfs, ngs,ngs.wavelength, nL+1, 'cond', 1e2); %this is not the cevtorised implementation.
+calibDm.threshold = 1e6;
+disp(calibDm)
 
 
-% atm = atmosphere(photometry.HeNe, 15e-2, 30, 'altitude', 5e3, 'windSpeed', 10, 'windDirection', pi/3);
+ngs = ngs.*tel*wfs;
 
+
+tel = tel + atm;
+figure
+imagesc(tel)
+ngs = ngs.*tel*wfs;
+
+%% regulation loop
+
+gain = 0.5;
+
+for k=1:100
+    +tel
+    +ngs
+    % +science
+    dm.coefs = dm.coefs - gain*CalibDm.M*wfs.slopes;
+    % dmCoefs(:,2) = dmCoefs(:,1) - gain*calibDm.M*wfs.slopes;
+%     dm.coefs = dmCoefs(:,1);
+%     dmCoefs(:,1) = dmCoefs(:,2);
+    set(h,'Cdata',ngs.meanRmOpd*1e6)
+    drawnow
+end
+imagesc(cam)
+set(h,'Cdata',catMeanRmPhase(scienceCombo))

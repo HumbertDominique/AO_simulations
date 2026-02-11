@@ -1,7 +1,7 @@
 %% OOMAO TUTORIAL
 close all
 clear
-
+addpath('OOMAO')
 %%%
 % NGS AO
 %%%
