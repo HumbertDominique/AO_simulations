@@ -3,9 +3,8 @@ clear all
 close all
 addpath('OOMAO')
 
-ngs =source;
-
-
+ngs =source('wavelength', photometry.HeNe);
+science = source('wavelength', photometry.HeNe);
 atm = atmosphere(photometry.V,15e-2,30,'altitude',5e3,'windSpeed',10,'windDirection',pi/3);
 
 
@@ -17,8 +16,12 @@ d = D/nL;           % [-] Lenslet pitch
 samplingFreq = 500; % [Hz] Sampling frequency
 
 tel = telescope(D,'resolution', nRes, 'fieldOfViewInArcsec',30,'samplingTime',1/samplingFreq);
-
 wfs = shackHartmann(nL,nRes, 0.85);
+
+telNoAtm = tel - atm;
+science = science .* telNoAtm * cam;
+cam.referenceFrame = cam.frame;  % perfect PSF as ref
+
 
 ngs = ngs.*tel*wfs;
 
@@ -76,9 +79,10 @@ wfs.camera.frameListener.Enabled = false;
 wfs.slopesListener.Enabled = false;
 
 ngs.*tel; % propagation ut to, but not including DM ans wfs
-CalibDm = calibration(dm,wfs, ngs,ngs.wavelength, nL+1, 'cond', 1e2); %this is not the cevtorised implementation.
-calibDm.threshold = 1e6;
-disp(calibDm)
+dm.coefs = zeros(dm.nValidActuator,1);  % start flat
+CalibDm = calibration(dm,wfs,ngs,ngs.wavelength); %this is not the cevtorised implementation.
+CalibDm.threshold = 1e6;
+disp(CalibDm)
 
 
 ngs = ngs.*tel*wfs;
@@ -89,20 +93,23 @@ figure
 imagesc(tel)
 ngs = ngs.*tel*wfs;
 
+
 %% regulation loop
 
-gain = 0.5;
+ngs = ngs.*tel;
 
-for k=1:100
-    +tel
-    +ngs
-    % +science
-    dm.coefs = dm.coefs - gain*CalibDm.M*wfs.slopes;
-    % dmCoefs(:,2) = dmCoefs(:,1) - gain*calibDm.M*wfs.slopes;
-%     dm.coefs = dmCoefs(:,1);
-%     dmCoefs(:,1) = dmCoefs(:,2);
-    set(h,'Cdata',ngs.meanRmOpd*1e6)
-    drawnow
+ngs = ngs.*tel*dm*wfs;       
+
+nIter = 100;  % number of loop iterations
+wfs.camera.frameListener.Enabled = true;
+wfs.slopesListener.Enabled = true;
+gain = 0.5;    % integrator gain
+
+M = CalibDm.M
+for k = 1:nIter
+    +tel;          % update atmosphere phase screen on telescope[]
+    +ngs;          % propagate source through current optical path (tel*dm*wfs)
+
+    dc = -gain * (M * wfs.slopes);  % DM command increment (minus sign for correction)
+    dm.coefs = dm.coefs + dc;       % integrator controller
 end
-imagesc(cam)
-set(h,'Cdata',catMeanRmPhase(scienceCombo))
