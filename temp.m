@@ -4,9 +4,8 @@ close all
 addpath('OOMAO')
 
 ngs =source('wavelength', photometry.HeNe);
-science = source('wavelength', photometry.HeNe);
 atm = atmosphere(photometry.V,15e-2,30,'altitude',5e3,'windSpeed',10,'windDirection',pi/3);
-
+cam = imager();
 
 nL = 10;            % [-] Number of lenslet accross the pupil 1mmu lens/actuator
 nPx = 10;           % [-] Px per lenslet
@@ -18,8 +17,7 @@ samplingFreq = 500; % [Hz] Sampling frequency
 tel = telescope(D,'resolution', nRes, 'fieldOfViewInArcsec',30,'samplingTime',1/samplingFreq);
 wfs = shackHartmann(nL,nRes, 0.85);
 
-telNoAtm = tel - atm;
-science = science .* telNoAtm * cam;
+science = ngs .* tel;
 cam.referenceFrame = cam.frame;  % perfect PSF as ref
 
 
@@ -85,31 +83,45 @@ CalibDm.threshold = 1e6;
 disp(CalibDm)
 
 
-ngs = ngs.*tel*wfs;
-
-
 tel = tel + atm;
 figure
 imagesc(tel)
-ngs = ngs.*tel*wfs;
+
 
 
 %% regulation loop
+nIter = 100;  % number of loop iterations
+
+
+slopesHistory = zeros(nIter, length(wfs.slopes));
+dmCommandsHistory = zeros(nIter, length(dm.coefs));
+fileID = 'ao_data.h5';
+if exist(fileID, 'file'), delete(fileID); end  % Fresh run
 
 ngs = ngs.*tel;
-
 ngs = ngs.*tel*dm*wfs;       
 
-nIter = 100;  % number of loop iterations
+
 wfs.camera.frameListener.Enabled = true;
 wfs.slopesListener.Enabled = true;
 gain = 0.5;    % integrator gain
 
-M = CalibDm.M
+M = CalibDm.M;
+
+% science = source('wavelength', ngs.wavelength);  % Science channel
+% science = science .* tel;  % Corrected path (tel includes dm)
+% correctedPSF = cam.frame;
+
+
 for k = 1:nIter
+
     +tel;          % update atmosphere phase screen on telescope[]
     +ngs;          % propagate source through current optical path (tel*dm*wfs)
-
+    correctedPSF = cam.frame;  % get the last PSF (after correction)
     dc = -gain * (M * wfs.slopes);  % DM command increment (minus sign for correction)
     dm.coefs = dm.coefs + dc;       % integrator controller
+
+    slopesHistory(k,:) = wfs.slopes;
+    dmCommandsHistory(k,:) = dm.coefs;
+
 end
