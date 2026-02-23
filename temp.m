@@ -4,10 +4,10 @@ close all
 addpath('OOMAO')
 
 ngs =source('wavelength', photometry.HeNe);
-atm = atmosphere(photometry.V,15e-2,30,'altitude',5e3,'windSpeed',10,'windDirection',pi/3);
+atm = atmosphere(photometry.HeNe,15e-2,30,'altitude',5e3,'windSpeed',10,'windDirection',pi/3);
 cam = imager();
 
-nL = 10;            % [-] Number of lenslet accross the pupil 1mmu lens/actuator
+nL = 60;            % [-] Number of lenslet accross the pupil 1mmu lens/actuator
 nPx = 10;           % [-] Px per lenslet
 nRes = nL*nPx;      % [-] Resolution
 D = 25;             % [-] Telescope diameter
@@ -17,9 +17,7 @@ samplingFreq = 500; % [Hz] Sampling frequency
 tel = telescope(D,'resolution', nRes, 'fieldOfViewInArcsec',30,'samplingTime',1/samplingFreq);
 wfs = shackHartmann(nL,nRes, 0.85);
 
-science = ngs .* tel;
 cam.referenceFrame = cam.frame;  % perfect PSF as ref
-
 
 ngs = ngs.*tel*wfs;
 
@@ -88,9 +86,8 @@ figure
 imagesc(tel)
 
 
-
 %% regulation loop
-nIter = 100;  % number of loop iterations
+nIter = 10;  % number of loop iterations
 
 
 slopesHistory = zeros(nIter, length(wfs.slopes));
@@ -104,24 +101,34 @@ ngs = ngs.*tel*dm*wfs;
 
 wfs.camera.frameListener.Enabled = true;
 wfs.slopesListener.Enabled = true;
-gain = 0.5;    % integrator gain
+gain = 0.2;    % integrator gain
 
 M = CalibDm.M;
 
-% science = source('wavelength', ngs.wavelength);  % Science channel
-% science = science .* tel;  % Corrected path (tel includes dm)
-% correctedPSF = cam.frame;
-
+science = source('wavelength', photometry.HeNe);  % Science channel
+% cam = imager();
+science = science.*tel*cam;  % Corrected path (tel includes dm)
 
 for k = 1:nIter
-
-    +tel;          % update atmosphere phase screen on telescope[]
+    fprintf('Iteration %d\n', k)
+    +tel;          % update atmosphere phase screen on telescope
     +ngs;          % propagate source through current optical path (tel*dm*wfs)
-    correctedPSF = cam.frame;  % get the last PSF (after correction)
     dc = -gain * (M * wfs.slopes);  % DM command increment (minus sign for correction)
     dm.coefs = dm.coefs + dc;       % integrator controller
-
+    +science;       % propagate science source through corrected path (tel*dm*cam)
     slopesHistory(k,:) = wfs.slopes;
     dmCommandsHistory(k,:) = dm.coefs;
+    psfHistory(:,:,k) = cam.frame;
 
 end
+
+figure
+imagesc(psfHistory(:,:,5));
+
+
+h5create(fileID, '/wf_slopes', size(slopesHistory));
+h5write(fileID, '/wf_slopes', slopesHistory);
+h5create(fileID, '/dm_commands', size(dmCommandsHistory));
+h5write(fileID, '/dm_commands', dmCommandsHistory);
+h5create(fileID, '/psf_history', size(psfHistory));
+h5write(fileID, '/psf_history', psfHistory);
