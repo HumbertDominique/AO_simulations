@@ -3,9 +3,15 @@ clear all
 close all
 addpath('OOMAO')
 
+fileID_WF = 'ao_WF.h5';
+fileID_lightfield = 'ao_lightfield.h5';
+fileID_WFS = 'ao_WFS.h5';
+fileID_DM = 'ao_DM.h5';
+fileID_psf = 'ao_psf.h5';
+
+
 ngs =source('wavelength', photometry.HeNe);
-atm = atmosphere(photometry.HeNe,15e-2,30,'altitude',5e3,'windSpeed',10,'windDirection',pi/3);
-cam = imager();
+atm = atmosphere(photometry.HeNe,15e-3,30,'altitude',5e3,'windSpeed',1,'windDirection',pi/3);
 
 nL = 60;            % [-] Number of lenslet accross the pupil 1mmu lens/actuator
 nPx = 10;           % [-] Px per lenslet
@@ -17,7 +23,8 @@ samplingFreq = 500; % [Hz] Sampling frequency
 tel = telescope(D,'resolution', nRes, 'fieldOfViewInArcsec',30,'samplingTime',1/samplingFreq);
 wfs = shackHartmann(nL,nRes, 0.85);
 
-cam.referenceFrame = cam.frame;  % perfect PSF as ref
+% cam.referenceFrame = cam.frame;  % perfect PSF as ref
+
 
 ngs = ngs.*tel*wfs;
 
@@ -74,61 +81,80 @@ dm = deformableMirror(nL+1, 'modes', bifa, 'resolution', tel.resolution, 'validA
 wfs.camera.frameListener.Enabled = false;
 wfs.slopesListener.Enabled = false;
 
-ngs.*tel; % propagation ut to, but not including DM ans wfs
+ngs = ngs.*tel; % propagation ut to, but not including DM ans wfs
 dm.coefs = zeros(dm.nValidActuator,1);  % start flat
 CalibDm = calibration(dm,wfs,ngs,ngs.wavelength); %this is not the cevtorised implementation.
+% CalibDm  = calibration(dm,wfs,ngs,ngs.wavelength,nL+1,'cond',1e2);
 CalibDm.threshold = 1e6;
+M = CalibDm.M;
 disp(CalibDm)
 
-
-tel = tel + atm;
-figure
-imagesc(tel)
-
-
 %% regulation loop
-nIter = 10;  % number of loop iterations
+
+nIter = 3;  % number of loop iterations
+gain = 0.2;    % integrator gain
 
 
 slopesHistory = zeros(nIter, length(wfs.slopes));
 dmCommandsHistory = zeros(nIter, length(dm.coefs));
-fileID = 'ao_data.h5';
-if exist(fileID, 'file'), delete(fileID); end  % Fresh run
-
-ngs = ngs.*tel;
-ngs = ngs.*tel*dm*wfs;       
-
-
+% lightfieldHistory = zeros(nIter, size(wfs.camera.frame));
+% psfHistory = zeros(nIter, size(camH.frame));
+if exist(fileID_WF, 'file'), delete(fileID_WF); end  % Fresh run
+if exist(fileID_WFS, 'file'), delete(fileID_WFS); end  % Fresh run
+if exist(fileID_DM, 'file'), delete(fileID_DM); end  % Fresh run
+if exist(fileID_psf, 'file'), delete(fileID_psf); end  % Fresh run
+if exist(fileID_lightfield, 'file'), delete(fileID_lightfield); end  % Fresh run
 wfs.camera.frameListener.Enabled = true;
 wfs.slopesListener.Enabled = true;
-gain = 0.2;    % integrator gain
 
-M = CalibDm.M;
+tel = tel + atm;
+% tel = tel;
+% figure
+% imagesc(tel) 
+tel = tel + atm;                      % bind atmosphere to telescope
+ngs = source('wavelength', photometry.HeNe);
+ngs = ngs.*tel*dm*wfs;    
 
-science = source('wavelength', photometry.HeNe);  % Science channel
-% cam = imager();
-science = science.*tel*cam;  % Corrected path (tel includes dm)
+camH = imager('diameter',25, 'fieldStopSize',30,'nyquistSampling',8*2);
+
+scienceH = source('wavelength', photometry.HeNe);  % Science channel
+scienceH = scienceH.*tel*dm*camH;  % Corrected path (tel includes dm)
+
+
+
 
 for k = 1:nIter
     fprintf('Iteration %d\n', k)
+
     +tel;          % update atmosphere phase screen on telescope
     +ngs;          % propagate source through current optical path (tel*dm*wfs)
+    +scienceH
+    % Regulator
     dc = -gain * (M * wfs.slopes);  % DM command increment (minus sign for correction)
     dm.coefs = dm.coefs + dc;       % integrator controller
-    +science;       % propagate science source through corrected path (tel*dm*cam)
+    % dm.coefs(:,1) = dm.coefs(:,1) - gain_cl*calibDm.M*wfs.slopes(:,1);
+    % dm.coefs(:,2) = (1-gain_pol)*dm.coefs(:,2) + ...
+% gain_pol*iF*( slmmse*( wfs.slopes(:,2) - calibDm.D*dm.coefs(:,2) ) );
+    % +scienceH;       % propagate science source through corrected path (tel*dm*cam)
     slopesHistory(k,:) = wfs.slopes;
+    lightfieldHistory(k,:) = wfs.camera;
     dmCommandsHistory(k,:) = dm.coefs;
-    psfHistory(:,:,k) = cam.frame;
+    psfHistory(:,:,k) = camH.frame;
 
 end
 
 figure
-imagesc(psfHistory(:,:,5));
+imagesc(psfHistory(:,:,2));
+% imagesc(wfs.camera);
+% imagesc(det.frame);
 
-
-h5create(fileID, '/wf_slopes', size(slopesHistory));
-h5write(fileID, '/wf_slopes', slopesHistory);
-h5create(fileID, '/dm_commands', size(dmCommandsHistory));
-h5write(fileID, '/dm_commands', dmCommandsHistory);
-h5create(fileID, '/psf_history', size(psfHistory));
-h5write(fileID, '/psf_history', psfHistory);
+% h5create(fileID_lightfield, '/wf_slopes', size(slopesHistory));
+% h5write(fileID_lightfield, '/wf_slopes', slopesHistory);
+% h5create(fileID_WF, '/wf_slopes', size(slopesHistory));
+% h5write(fileID_WF, '/wf_slopes', slopesHistory);
+% h5create(fileID_WFS, '/wfs_slopes', size(slopesHistory));
+% h5write(fileID_WFS, '/wfs_slopes', slopesHistory);
+% h5create(fileID_DM, '/dm_commands', size(dmCommandsHistory));
+% h5write(fileID_DM, '/dm_commands', dmCommandsHistory);
+% h5create(fileID_psf, '/psf_history', size(psfHistory));
+% h5write(fileID_psf, '/psf_history', psfHistory);
