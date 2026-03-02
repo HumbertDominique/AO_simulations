@@ -4,15 +4,14 @@ close all
 addpath('OOMAO')
 
 ngs =source;
-
-atm = atmosphere(photometry.HeNe,20e-2,30,...
-    'fractionnalR0',[0.015],'altitude',[12e3],...
-    'windSpeed',[20],'windDirection',[pi]);
+r0 = 50e-2; %[m]
+L0 = 30; % [m]
+atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',[12e3],'windSpeed',[20],'windDirection',[pi]);
 
 nL   = 10;
-nPx  = 10;
+nPx  = 17;
 nRes = nL*nPx;
-D    = 25;
+D    = 10;
 d    = D/nL; % lenslet pitch
 samplingFreq = 500;
 
@@ -44,7 +43,7 @@ warning('off','oomao:shackHartmann:relay')
 for kStep=u
     ngs.zenith = -tipStep*kStep;
     +ngs;
-    drawnow
+    % drawnow
     sx(kStep+1) = median(wfs.slopes(1:end/2));
 end
 warning('on','oomao:shackHartmann:relay')
@@ -57,7 +56,7 @@ slopesLinCoef = polyfit(Ox_in,Ox_out,1);
 wfs.slopesUnits = 1/slopesLinCoef(1);
 ngs.zenith = 0;
 wfs.pointingDirection = [];
-%%
+%
 
 
 bifa = influenceFunction('monotonic',0.75);
@@ -72,77 +71,147 @@ ngs = ngs.*tel;
 calibDm = calibration(dm,wfs,ngs,ngs.wavelength,nL+1,'cond',1e2);
 
 tel = tel + atm;
-figure
-imagesc(tel)
+% figure
+% imagesc(tel)
 ngs = ngs.*tel*wfs;
 
 %% Diffraction limited performance
 cam = imager();
+instantCam = imager();
 
 science = source('wavelength',photometry.HeNe);
 
 tel = tel - atm;
 science = science.*tel*cam;
-figure(31416)
-imagesc(cam,'parent',subplot(2,1,1))
+% figure(31416)
+% imagesc(cam,'parent',subplot(2,1,1))
 
 
 cam.referenceFrame = cam.frame;
 +science;
 fprintf('Strehl ratio: %4.1f\n',cam.strehl)
-%% Atmospheric turbulence performance
+% Atmospheric turbulence performance
 
 tel = tel + atm;
 +science;
 fprintf('Strehl ratio: %4.1f\n',cam.strehl)
-%% Regulation ?
+% Regulation ?
 
-ngsCombo = source('zenith',zeros(1,2),'azimuth',zeros(1,2),'magnitude',8);
+% ngsCombo = source('zenith',zeros(1,2),'azimuth',zeros(1,2),'magnitude',8);
+ngsCombo = source('zenith',0,'azimuth',0,'magnitude',8);
+
 ngsCombo = ngsCombo.*tel*dm*wfs;
-scienceCombo = source('zenith',zeros(1,2),'azimuth',zeros(1,2),'wavelength',photometry.HeNe);
+% scienceCombo = source('zenith',zeros(1,2),'azimuth',zeros(1,2),'wavelength',photometry.HeNe,'magnitude',1);
+scienceCombo = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',8);
+instantScience = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',8);
+
 scienceCombo = scienceCombo.*tel*dm*cam;
+instantScience = instantScience.*tel*dm*instantCam;
+
 %%
 
 flush(cam)
 cam.clockRate    = 1;
 exposureTime     = 100;
 cam.exposureTime = exposureTime;
-startDelay       = 0;
+startDelay       = 20;
+
+instantCam.clockRate    = 1;
+instantCam.exposureTime = 1;
+
 figure(31416)
 imagesc(cam,'parent',subplot(2,1,1))
-% cam.frameListener.Enabled = true;
-subplot(2,1,2)
-h = imagesc(catMeanRmPhase(scienceCombo));
-axis xy equal tight
-colorbar
+cam.frameListener.Enabled = true;
+% subplot(2,1,2)
+% h = imagesc(catMeanRmPhase(scienceCombo));
+% axis xy equal tight
+% colorbar
 
 
-gain_cl  = 0.5;
+%% Regulation
+gain_cl  = 0.3;
+% dm.coefs = zeros(dm.nValidActuator,2);
+dm.coefs = zeros(dm.nValidActuator,1);
 
-
-dm.coefs = zeros(dm.nValidActuator,2);
+set(scienceCombo, 'logging', true);  
+set(scienceCombo, 'phaseVar', []);  
 flush(cam)
-set(scienceCombo,'logging',true)
-set(scienceCombo,'phaseVar',[])
-slmmse.wavefrontSize = [dm.nValidActuator,1];
-slmmse.warmStart = true;
-cam.startDelay   = startDelay;
-cam.frameListener.Enabled = false;
-% set(ngsCombo,'magnitude',8)
-% wfs.camera.photonNoise = true;
-% wfs.camera.readOutNoise = 2;
-% wfs.framePixelThreshold = wfs.camera.readOutNoise;
-%%
-% <latex>
-% The loop is closed for one full exposure of the science camera.
-% </latex>
+
+cam.clockRate    = 1;
+instantCam.clockRate    = 1;
+exposureTime     = 100;
+cam.exposureTime = exposureTime;
+instantCam.exposureTime = 1;
+startDelay       = 20;
+
+
+cam.startDelay = startDelay;
+psf_short = zeros(size(instantCam.frame,1), size(instantCam.frame,2), exposureTime);
 nIteration = startDelay + exposureTime;
+
+% the start delay could be implemented using 2 loops. the 1st is a startup to stabilise the regulator, and the 2nd is the main loop to collect data.
 for k=1:nIteration
     % Objects update
+    flush(instantCam)
     +tel;
     +ngsCombo;
     +scienceCombo;
+    +instantScience;
     % Closed-loop controller
-    dm.coefs(:,1) = dm.coefs(:,1) - gain_cl*calibDm.M*wfs.slopes(:,1);    
+    dm.coefs = dm.coefs - gain_cl*calibDm.M*wfs.slopes;
+    % rwfe_history(k) = scienceCombo.meanRmOpd
+    var_wfe = reshape(science.phaseVar(1:nIteration*2), 2, [])';  
+    wfe_rms = sqrt(var_wfe)/science.waveNumber*1e6;
+
 end
-imagesc(cam)
+psf_sum = sum(psf_short(:,:,startDelay+1:end), 3);
+% psf_sum = sum(psf_short, 3);
+
+% size_variable = size(scienceCombo.meanRmO);
+% fprintf('Size of variable: [%s]\n', mat2str(size_variable));
+% fprintf('Strehl ratio: %4.1f\n',cam.strehl)
+% fprintf('Strehl ratio: %4.1f\n',instantCam.strehl);
+figure;
+imagesc(cam,'parent',subplot(3,1,1));
+title('Long Exposure PSF', 'FontSize', 12, 'FontWeight', 'bold');
+colorbar; axis image;
+imagesc(instantCam,'parent',subplot(3,1,2));
+title('Instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
+colorbar; axis image;
+imagesc(psf_sum,'parent',subplot(3,1,3));
+title('Long psf from instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
+colorbar; axis image;
+
+sgtitle(sprintf('AO Strehl: Long=%.2f, Instant=%.2f', cam.strehl, instantCam.strehl));
+
+
+% figure;
+% semilogy(phi, 'o-');
+% xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
+% title('AO Loop Convergence');
+% grid on;
+
+
+% phaseEstResRms = ngs.opdRms;  
+% fprintf('Residual wavefront error: %4.2fnm\n', 1e9*phaseEstResRms/ngs.waveNumber)
+
+
+% telLowRes = telescope(tel.D,'resolution',nL+1,'fieldOfViewInArcsec',30,'samplingTime',1/500);
+% telLowRes.pupil = wfs.validActuator;
+
+% telLowRes= telLowRes + atm;
+% ngs = ngs.*telLowRes;
+% phase = ngs.meanRmOpd;
+
+% phaseEst = tools.meanSub( wfs.finiteDifferenceWavefront*ngs.wavelength ,...
+% wfs.validActuator);
+
+% ngs = ngs.*telLowRes*{wfs.validActuator,-2*pi*wfs.finiteDifferenceWavefront};
+% phaseEstRes = ngs.meanRmOpd;
+% phaseEstResRms = ngs.opdRms;
+% % phaseEst = wfs.finiteDifferenceWavefront;  
+% % % Compute residual by propagating through estimated phase  
+% % ngs = ngs.*telLowRes*{wfs.validActuator, -2*pi*phaseEst};  
+% % residualRms = ngs.opdRms;
+
+% fprintf(phaseEstResRms)
