@@ -4,14 +4,14 @@ close all
 addpath('OOMAO')
 
 ngs =source;
-r0 = 50e-2; %[m]
+r0 = 1.5e-3; %[m]
 L0 = 30; % [m]
-atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',[12e3],'windSpeed',[20],'windDirection',[pi]);
+atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',[.5],'windSpeed',[.5],'windDirection',[pi]);
 
 nL   = 10;
 nPx  = 17;
 nRes = nL*nPx;
-D    = 10;
+D    = 0.015;
 d    = D/nL; % lenslet pitch
 samplingFreq = 500;
 
@@ -129,17 +129,17 @@ cam.frameListener.Enabled = true;
 
 
 %% Regulation
-gain_cl  = 0.3;
+gain_cl  = 0.5;
 % dm.coefs = zeros(dm.nValidActuator,2);
 dm.coefs = zeros(dm.nValidActuator,1);
 
-set(scienceCombo, 'logging', true);  
-set(scienceCombo, 'phaseVar', []);  
+% set(scienceCombo, 'logging', true);  
+% set(scienceCombo, 'phaseVar', []);  
 flush(cam)
 
 cam.clockRate    = 1;
 instantCam.clockRate    = 1;
-exposureTime     = 100;
+exposureTime     = 1000;
 cam.exposureTime = exposureTime;
 instantCam.exposureTime = 1;
 startDelay       = 20;
@@ -160,8 +160,7 @@ for k=1:nIteration
     % Closed-loop controller
     dm.coefs = dm.coefs - gain_cl*calibDm.M*wfs.slopes;
     % rwfe_history(k) = scienceCombo.meanRmOpd
-    var_wfe = reshape(science.phaseVar(1:nIteration*2), 2, [])';  
-    wfe_rms = sqrt(var_wfe)/science.waveNumber*1e6;
+    % rwfe_history(k) = ngsCombo.meanRmOpd;  % 
 
 end
 psf_sum = sum(psf_short(:,:,startDelay+1:end), 3);
