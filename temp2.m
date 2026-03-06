@@ -6,7 +6,7 @@ addpath('OOMAO')
 ngs =source;
 r0 = 1.5e-3; %[m]
 L0 = 30; % [m]
-atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',[.5],'windSpeed',[.5],'windDirection',[pi]);
+atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',[.5],'windSpeed',[.12],'windDirection',[pi]);
 
 nL   = 10;
 nPx  = 17;
@@ -159,8 +159,8 @@ for k=1:nIteration
     +instantScience;
     % Closed-loop controller
     dm.coefs = dm.coefs - gain_cl*calibDm.M*wfs.slopes;
-    % rwfe_history(k) = scienceCombo.meanRmOpd
-    % rwfe_history(k) = ngsCombo.meanRmOpd;  % 
+    rwfe_history(k) = scienceCombo.opdRms;
+    psf_short(:,:,k) = instantCam.frame;
 
 end
 psf_sum = sum(psf_short(:,:,startDelay+1:end), 3);
@@ -168,49 +168,46 @@ psf_sum = sum(psf_short(:,:,startDelay+1:end), 3);
 
 % size_variable = size(scienceCombo.meanRmO);
 % fprintf('Size of variable: [%s]\n', mat2str(size_variable));
-% fprintf('Strehl ratio: %4.1f\n',cam.strehl)
-% fprintf('Strehl ratio: %4.1f\n',instantCam.strehl);
+fprintf('Strehl ratio: %4.1f\n',cam.strehl)
+fprintf('Strehl ratio: %4.1f\n',instantCam.strehl);
+
+% lets plot the rwfe_history serie on a linear scale and on a logarithmic scale to see the convergence of the AO loop. we can also plot the long exposure PSF, the instantaneous PSF, and the long exposure PSF computed from the sum of the instantaneous PSFs.
+
 figure;
-imagesc(cam,'parent',subplot(3,1,1));
+subplot(2,1,1);
+plot(rwfe_history, 'o-');
+xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
+title('AO Loop Convergence (Linear Scale)');
+grid on;
+subplot(2,1,2);
+semilogy(rwfe_history, 'o-');
+xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
+title('AO Loop Convergence (Logarithmic Scale)');
+grid on;
+
+
+figure;
+imagesc(cam,'parent',subplot(2,2,1));
 title('Long Exposure PSF', 'FontSize', 12, 'FontWeight', 'bold');
 colorbar; axis image;
-imagesc(instantCam,'parent',subplot(3,1,2));
+imagesc(instantCam,'parent',subplot(2,2,2));
 title('Instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
 colorbar; axis image;
-imagesc(psf_sum,'parent',subplot(3,1,3));
+imagesc(psf_sum,'parent',subplot(2,2,3));
 title('Long psf from instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
+colorbar; axis image;
+imagesc(cam.frame-psf_sum,'parent',subplot(2,2,4));
+title('Long psf - iPsfSum', 'FontSize', 12, 'FontWeight', 'bold');
 colorbar; axis image;
 
 sgtitle(sprintf('AO Strehl: Long=%.2f, Instant=%.2f', cam.strehl, instantCam.strehl));
 
 
-% figure;
-% semilogy(phi, 'o-');
-% xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
-% title('AO Loop Convergence');
-% grid on;
+psf_sum_flux = sum(psf_sum(:));
+long_psf_flux = sum(cam.frame(:));
 
+fprintf('Flux in long exposure PSF: %.2e\n', long_psf_flux);
+fprintf('Flux in sum of instantaneous PSFs: %.2e\n', psf_sum_flux);
 
-% phaseEstResRms = ngs.opdRms;  
-% fprintf('Residual wavefront error: %4.2fnm\n', 1e9*phaseEstResRms/ngs.waveNumber)
-
-
-% telLowRes = telescope(tel.D,'resolution',nL+1,'fieldOfViewInArcsec',30,'samplingTime',1/500);
-% telLowRes.pupil = wfs.validActuator;
-
-% telLowRes= telLowRes + atm;
-% ngs = ngs.*telLowRes;
-% phase = ngs.meanRmOpd;
-
-% phaseEst = tools.meanSub( wfs.finiteDifferenceWavefront*ngs.wavelength ,...
-% wfs.validActuator);
-
-% ngs = ngs.*telLowRes*{wfs.validActuator,-2*pi*wfs.finiteDifferenceWavefront};
-% phaseEstRes = ngs.meanRmOpd;
-% phaseEstResRms = ngs.opdRms;
-% % phaseEst = wfs.finiteDifferenceWavefront;  
-% % % Compute residual by propagating through estimated phase  
-% % ngs = ngs.*telLowRes*{wfs.validActuator, -2*pi*phaseEst};  
-% % residualRms = ngs.opdRms;
-
-% fprintf(phaseEstResRms)
+flux_ratio = psf_sum_flux / long_psf_flux;
+fprintf('Flux ratio (iPsfSum / Long PSF): %.3f\n', flux_ratio);
