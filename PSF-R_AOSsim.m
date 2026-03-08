@@ -3,20 +3,23 @@ clear all
 close all
 addpath('OOMAO')
 
-ngs =source;
+
+
+ngs = source;
+
+% TODO: put these into a txt file for input
 r0 = 1.5e-3; %[m]
 L0 = 30; % [m]
-atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',[.5],'windSpeed',[.12],'windDirection',[pi]);
-
 nL   = 10;
 nPx  = 17;
 nRes = nL*nPx;
-D    = 0.015;
+D    = 0.0195;
 d    = D/nL; % lenslet pitch
 samplingFreq = 500;
 
-tel = telescope(D,'resolution',nRes,...
-    'fieldOfViewInArcsec',30,'samplingTime',1/samplingFreq);
+atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',[.5],'windSpeed',[.12],'windDirection',[pi]);
+
+tel = telescope(D,'resolution',nRes,'fieldOfViewInArcsec',30,'samplingTime',1/samplingFreq);
 
 wfs = shackHartmann(nL,nRes,0.85);
 
@@ -79,99 +82,108 @@ ngs = ngs.*tel*wfs;
 cam = imager();
 instantCam = imager();
 
-science = source('wavelength',photometry.HeNe);
+ngs = source('zenith',0,'azimuth',0,'magnitude',8);     % AO source
+science = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',8);    % long psf source
+instantScience = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',8); %instantaneous psf source. could be the same as the long one.
 
 tel = tel - atm;
+
 science = science.*tel*cam;
-% figure(31416)
-% imagesc(cam,'parent',subplot(2,1,1))
-
-
++science
 cam.referenceFrame = cam.frame;
-+science;
-fprintf('Strehl ratio: %4.1f\n',cam.strehl)
-% Atmospheric turbulence performance
++science
+
+instantScience = instantScience.*tel*instantCam;
++instantScience
+instantCam.referenceFrame = instantCam.frame;
++instantScience
+
+fprintf('Long PSF Strehl ratio ref: %4.1f\n',cam.strehl);
+fprintf('Ipsf Strehl ratio ref: %4.1f\n',instantCam.strehl);
 
 tel = tel + atm;
-+science;
-fprintf('Strehl ratio: %4.1f\n',cam.strehl)
-% Regulation ?
++science
++instantScience
 
-% ngsCombo = source('zenith',zeros(1,2),'azimuth',zeros(1,2),'magnitude',8);
-ngsCombo = source('zenith',0,'azimuth',0,'magnitude',8);
+fprintf('Long PSF Strehl ratio single frame init: %4.1f\n',cam.strehl);
+fprintf('Ipsf Strehl ratio single frame init: %4.1f\n',instantCam.strehl);
 
-ngsCombo = ngsCombo.*tel*dm*wfs;
-% scienceCombo = source('zenith',zeros(1,2),'azimuth',zeros(1,2),'wavelength',photometry.HeNe,'magnitude',1);
-scienceCombo = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',8);
-instantScience = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',8);
+% Setting the the actual paths
 
-scienceCombo = scienceCombo.*tel*dm*cam;
+science = science.*tel*dm*cam;
 instantScience = instantScience.*tel*dm*instantCam;
+ngs = ngs.*tel*dm*wfs;
 
-%%
+%% Regulation settings
 
-flush(cam)
+% TODO: put these into a txt file for input
 cam.clockRate    = 1;
-exposureTime     = 100;
-cam.exposureTime = exposureTime;
-startDelay       = 20;
-
 instantCam.clockRate    = 1;
+exposureTime     = 10;
+cam.exposureTime = exposureTime;
 instantCam.exposureTime = 1;
+startDelay       = 10;
 
-figure(31416)
-imagesc(cam,'parent',subplot(2,1,1))
-cam.frameListener.Enabled = true;
-% subplot(2,1,2)
-% h = imagesc(catMeanRmPhase(scienceCombo));
-% axis xy equal tight
-% colorbar
+gain_cl  = 0.5 % integrator gain
 
-
-%% Regulation
-gain_cl  = 0.5;
-% dm.coefs = zeros(dm.nValidActuator,2);
 dm.coefs = zeros(dm.nValidActuator,1);
-
-% set(scienceCombo, 'logging', true);  
-% set(scienceCombo, 'phaseVar', []);  
-flush(cam)
-
-cam.clockRate    = 1;
-instantCam.clockRate    = 1;
-exposureTime     = 1000;
-cam.exposureTime = exposureTime;
-instantCam.exposureTime = 1;
-startDelay       = 20;
-
 
 cam.startDelay = startDelay;
 psf_short = zeros(size(instantCam.frame,1), size(instantCam.frame,2), exposureTime);
 nIteration = startDelay + exposureTime;
 
+%% Performance history
+
+% TODO: put these into a txt file for input
+fileID_WF = 'ao_WF.h5';
+fileID_WFS = 'ao_WFS.h5';
+fileID_lightfield = 'ao_lightfield.h5';
+fileID_DM = 'ao_DM.h5';
+fileID_psf = 'ao_psf.h5';
+fileID_rwfe = 'ao_rwfe.h5';
+
+
+WFHistory = zeros(size(ngs.meanRmPhase,1),size(ngs.meanRmPhase,2),nIteration);
+lightfieldHistory = zeros(size(wfs.camera.frame, 1), size(wfs.camera.frame, 2),nIteration);
+dmCommandsHistory = zeros(length(dm.coefs),nIteration);
+psfHistory = zeros(size(instantCam.frame, 1), size(instantCam.frame, 2),nIteration);
+rwfe_history = zeros(nIteration,1);
+if exist(fileID_WF, 'file'), delete(fileID_WF); end
+if exist(fileID_WFS, 'file'), delete(fileID_WFS); end
+if exist(fileID_DM, 'file'), delete(fileID_DM); end
+if exist(fileID_lightfield, 'file'), delete(fileID_lightfield); end
+if exist(fileID_psf, 'file'), delete(fileID_psf); end
+if exist(fileID_rwfe, 'file'), delete(fileID_rwfe); end
+
+
+%% Regulation
+
+flush(cam)
 % the start delay could be implemented using 2 loops. the 1st is a startup to stabilise the regulator, and the 2nd is the main loop to collect data.
 for k=1:nIteration
     % Objects update
     flush(instantCam)
     +tel;
-    +ngsCombo;
-    +scienceCombo;
+    +ngs;
+    +science;
     +instantScience;
     % Closed-loop controller
     dm.coefs = dm.coefs - gain_cl*calibDm.M*wfs.slopes;
-    rwfe_history(k) = scienceCombo.opdRms;
-    psf_short(:,:,k) = instantCam.frame;
-
+    dm.coefs = min(max(dm.coefs, -1), 1);
+    % local log
+    WFHistory(:,:,k) = ngs.meanRmPhase;
+    WFSHistory(:,k) = wfs.slopes;
+    lightfieldHistory(:,:,k) = wfs.camera.frame;
+    dmCommandsHistory(:, k) = dm.coefs;
+    % psf_short(:,:,k) = instantCam.frame;
+    rwfe_history(k) = science.opdRms;
+    psfHistory(:,:,k) = instantCam.frame;
 end
-psf_sum = sum(psf_short(:,:,startDelay+1:end), 3);
-% psf_sum = sum(psf_short, 3);
 
-% size_variable = size(scienceCombo.meanRmO);
-% fprintf('Size of variable: [%s]\n', mat2str(size_variable));
+psf_sum = sum(psfHistory(:,:,startDelay+1:end), 3);
+
 fprintf('Strehl ratio: %4.1f\n',cam.strehl)
 fprintf('Strehl ratio: %4.1f\n',instantCam.strehl);
-
-% lets plot the rwfe_history serie on a linear scale and on a logarithmic scale to see the convergence of the AO loop. we can also plot the long exposure PSF, the instantaneous PSF, and the long exposure PSF computed from the sum of the instantaneous PSFs.
 
 figure;
 subplot(2,1,1);
@@ -184,7 +196,6 @@ semilogy(rwfe_history, 'o-');
 xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
 title('AO Loop Convergence (Logarithmic Scale)');
 grid on;
-
 
 figure;
 imagesc(cam,'parent',subplot(2,2,1));
@@ -199,7 +210,6 @@ colorbar; axis image;
 imagesc(cam.frame-psf_sum,'parent',subplot(2,2,4));
 title('Long psf - iPsfSum', 'FontSize', 12, 'FontWeight', 'bold');
 colorbar; axis image;
-
 sgtitle(sprintf('AO Strehl: Long=%.2f, Instant=%.2f', cam.strehl, instantCam.strehl));
 
 
@@ -211,3 +221,17 @@ fprintf('Flux in sum of instantaneous PSFs: %.2e\n', psf_sum_flux);
 
 flux_ratio = psf_sum_flux / long_psf_flux;
 fprintf('Flux ratio (iPsfSum / Long PSF): %.3f\n', flux_ratio);
+
+
+h5create(fileID_WF, '/wf', size(WFHistory));
+h5write(fileID_WF, '/wf', WFHistory);
+h5create(fileID_WFS, '/wfs', size(WFSHistory));
+h5write(fileID_WFS, '/wfs', WFSHistory);
+h5create(fileID_lightfield, '/wf_lightfield', size(lightfieldHistory));
+h5write(fileID_lightfield, '/wf_lightfield', lightfieldHistory);
+h5create(fileID_DM, '/dm_commands', size(dmCommandsHistory));
+h5write(fileID_DM, '/dm_commands', dmCommandsHistory);
+h5create(fileID_psf, '/psf_history', size(psfHistory));
+h5write(fileID_psf, '/psf_history', psfHistory);
+h5create(fileID_rwfe, '/rwfe_history', size(rwfe_history));
+h5write(fileID_rwfe, '/rwfe_history', rwfe_history);
