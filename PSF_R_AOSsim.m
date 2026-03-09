@@ -83,7 +83,7 @@ cam = imager();
 instantCam = imager();
 
 ngs = source('zenith',0,'azimuth',0,'magnitude',8);     % AO source
-science = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',8);    % long psf source
+science = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',8);    % long psf source, Magniture is arbitrary
 instantScience = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',8); %instantaneous psf source. could be the same as the long one.
 
 tel = tel - atm;
@@ -119,20 +119,22 @@ ngs = ngs.*tel*dm*wfs;
 % TODO: put these into a txt file for input
 cam.clockRate    = 1;
 instantCam.clockRate    = 1;
-exposureTime     = 10;
+exposureTime     = 100;
 cam.exposureTime = exposureTime;
 instantCam.exposureTime = 1;
-startDelay       = 10;
+startDelay       = 20;
 
 gain_cl  = 0.5 % integrator gain
 
-dm.coefs = zeros(dm.nValidActuator,1);
+wfs.camera.photonNoise = false;
+wfs.camera.readOutNoise = 0;
 
+
+dm.coefs = zeros(dm.nValidActuator,1);
 cam.startDelay = startDelay;
-psf_short = zeros(size(instantCam.frame,1), size(instantCam.frame,2), exposureTime);
 nIteration = startDelay + exposureTime;
 
-%% Performance history
+% Performance history
 
 % TODO: put these into a txt file for input
 fileID_WF = 'ao_WF.h5';
@@ -144,6 +146,7 @@ fileID_rwfe = 'ao_rwfe.h5';
 
 
 WFHistory = zeros(size(ngs.meanRmPhase,1),size(ngs.meanRmPhase,2),nIteration);
+WFSHistory = zeros(length(wfs.slopes),nIteration);
 lightfieldHistory = zeros(size(wfs.camera.frame, 1), size(wfs.camera.frame, 2),nIteration);
 dmCommandsHistory = zeros(length(dm.coefs),nIteration);
 psfHistory = zeros(size(instantCam.frame, 1), size(instantCam.frame, 2),nIteration);
@@ -175,27 +178,27 @@ for k=1:nIteration
     WFSHistory(:,k) = wfs.slopes;
     lightfieldHistory(:,:,k) = wfs.camera.frame;
     dmCommandsHistory(:, k) = dm.coefs;
-    % psf_short(:,:,k) = instantCam.frame;
-    rwfe_history(k) = science.opdRms;
+    rwfe_waves_history(k) = sqrt(var(ngs))./2/pi; % [waves]
     psfHistory(:,:,k) = instantCam.frame;
 end
 
 psf_sum = sum(psfHistory(:,:,startDelay+1:end), 3);
 
-fprintf('Strehl ratio: %4.1f\n',cam.strehl)
+fprintf('Strehl ratio: %4.1f\n',cam.strehl);
 fprintf('Strehl ratio: %4.1f\n',instantCam.strehl);
 
 figure;
 subplot(2,1,1);
-plot(rwfe_history, 'o-');
+plot(rwfe_waves_history, 'o-');
 xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
 title('AO Loop Convergence (Linear Scale)');
 grid on;
 subplot(2,1,2);
-semilogy(rwfe_history, 'o-');
+semilogy(rwfe_waves_history, 'o-');
 xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
 title('AO Loop Convergence (Logarithmic Scale)');
 grid on;
+
 
 figure;
 imagesc(cam,'parent',subplot(2,2,1));
@@ -233,5 +236,5 @@ h5create(fileID_DM, '/dm_commands', size(dmCommandsHistory));
 h5write(fileID_DM, '/dm_commands', dmCommandsHistory);
 h5create(fileID_psf, '/psf_history', size(psfHistory));
 h5write(fileID_psf, '/psf_history', psfHistory);
-h5create(fileID_rwfe, '/rwfe_history', size(rwfe_history));
-h5write(fileID_rwfe, '/rwfe_history', rwfe_history);
+h5create(fileID_rwfe, '/rwfe_waves_history', size(rwfe_waves_history));
+h5write(fileID_rwfe, '/rwfe_waves_history', rwfe_waves_history);
