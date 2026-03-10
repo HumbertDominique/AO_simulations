@@ -10,8 +10,10 @@ ngs = source;
 % TODO: put these into a txt file for input
 r0 = 1.5e-3; %[m]
 L0 = 30; % [m]
-nL   = 10;
-nPx  = 17;
+nAct = 11; % number of actuators across the pupil, including the ones outside the pupil
+nL   = nAct*4;
+nPx  = 27;
+
 nRes = nL*nPx;
 D    = 0.0195;
 d    = D/nL; % lenslet pitch
@@ -62,16 +64,21 @@ wfs.pointingDirection = [];
 %
 
 
+
 bifa = influenceFunction('monotonic',0.75);
-dm = deformableMirror(nL+1,'modes',bifa,...
-    'resolution',tel.resolution,...
-    'validActuator',wfs.validActuator);
+dm = deformableMirror(nAct,'modes',bifa, 'resolution',tel.resolution);
+% dm = deformableMirror(nAct,'modes',bifa, 'resolution',tel.resolution, 'validActuator', wfs.validActuator);
+
+
+calibDm = calibration(dm,wfs,ngs,ngs.wavelength/40);
+
+
+
 
 wfs.camera.frameListener.Enabled = false;
 wfs.slopesListener.Enabled = false;
 
 ngs = ngs.*tel;
-calibDm = calibration(dm,wfs,ngs,ngs.wavelength,nL+1,'cond',1e2);
 
 tel = tel + atm;
 % figure
@@ -119,7 +126,7 @@ ngs = ngs.*tel*dm*wfs;
 % TODO: put these into a txt file for input
 cam.clockRate    = 1;
 instantCam.clockRate    = 1;
-exposureTime     = 1000;
+exposureTime     = 100;
 cam.exposureTime = exposureTime;
 instantCam.exposureTime = 1;
 startDelay       = 20;
@@ -171,7 +178,8 @@ for k=1:nIteration
     +science;
     +instantScience;
     % Closed-loop controller
-    dm.coefs = dm.coefs - gain_cl*calibDm.M*wfs.slopes;
+    % dm.coefs = dm.coefs - gain_cl*calibDm.M*wfs.slopes;
+    dm.coefs = dm.coefs - gain_cl*dmCalib.M*wfs.slopes;
     dm.coefs = min(max(dm.coefs, -1), 1);
     % local log
     WFHistory(:,:,k) = ngs.meanRmPhase;
