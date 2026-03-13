@@ -178,8 +178,8 @@ for k=1:nIteration
     +science;
     +instantScience;
     % Closed-loop controller
-    % dm.coefs = dm.coefs - gain_cl*calibDm.M*wfs.slopes;
-    dm.coefs = dm.coefs - gain_cl*dmCalib.M*wfs.slopes;
+    dm.coefs = dm.coefs - gain_cl*calibDm.M*wfs.slopes;
+    % dm.coefs = dm.coefs - gain_cl*dmCalib.M*wfs.slopes;
     dm.coefs = min(max(dm.coefs, -1), 1);
     % local log
     WFHistory(:,:,k) = ngs.meanRmPhase;
