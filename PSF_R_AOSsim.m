@@ -4,18 +4,16 @@ close all
 addpath('OOMAO')
 
 
-
 ngs = source;
 
 % TODO: put these into a txt file for input
 r0 = 3.75e-3; %[m]
 L0 = 30; % [m]
-Asl = [0.02]; % [m]
-wind = [.01]; % [m/s]
+Asl = [0.05]; % [m]
+wind = [.002]; % [m/s]
 windDir = [pi]; % [rad]
 nAct = 11; % number of actuators across the pupil, including the ones outside the pupil
 nL   = nAct-1;
-
 
 nPx  = 17;
 nRes = nL*nPx;
@@ -122,10 +120,11 @@ ngs = ngs.*tel*dm*wfs;
 
 %% Regulation settings
 
+
 % TODO: put these into a txt file for input
 cam.clockRate    = 1;
 instantCam.clockRate    = 1;
-exposureTime     = 100;
+exposureTime     = 20;
 cam.exposureTime = exposureTime;
 instantCam.exposureTime = 1;
 startDelay       = 10;
@@ -166,7 +165,7 @@ if exist(fileID_rwfe, 'file'), delete(fileID_rwfe); end
 
 
 %% Regulation
-gain_cl = .8;
+% gain_cl = .8;
 flush(cam)
 % the start delay could be implemented using 2 loops. The 1st is a startup to stabilise the regulator, and the 2nd is the main loop to collect data.
 for k=1:nIteration

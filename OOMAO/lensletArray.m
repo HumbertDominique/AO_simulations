@@ -516,7 +516,7 @@ classdef lensletArray < handle
 
             if ~rem(obj.nLensletImagePx,2)
                 % shift the intensity of half a pixel for even sampling
-                fprintf(' @(lensletArray)> Set phasor (shift the intensity of half a pixel\n for even intensity sampling)\n')
+                % fprintf(' @(lensletArray)> Set phasor (shift the intensity of half a pixel\n for even intensity sampling)\n')
                 [u,v]         = ndgrid((0:(obj.nLensletWavePx-1)).*(~rem(obj.nLensletWavePx,2)-nOutWavePx)./nOutWavePx);
                 obj.fftPhasor = repmat( exp(-1i.*pi.*(u+v)) , obj.nLenslet, obj.nLenslet );
             else

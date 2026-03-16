@@ -200,7 +200,7 @@ classdef source < stochasticWave & hgsetget
             % book
             if isempty(nCall)
                 set(obj,'log',logBook.checkIn(obj));
-                display(obj)
+                % display(obj)
             end
          end
         

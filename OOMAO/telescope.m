@@ -91,7 +91,7 @@ classdef telescope < telescopeAbstract
 %             p.addParamValue('opticalAberration', [], @(x) isa(x,'atmosphere'));
 %             p.parse(D,varargin{:});
             obj = obj@telescopeAbstract(D,varargin{:});
-            display(obj)
+            % display(obj)
         end
         
         %% Destructor
