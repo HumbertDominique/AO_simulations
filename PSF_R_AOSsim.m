@@ -8,17 +8,23 @@ addpath('OOMAO')
 ngs = source;
 
 % TODO: put these into a txt file for input
-r0 = 1.5e-3; %[m]
+r0 = 3.75e-3; %[m]
 L0 = 30; % [m]
-nL   = 10;
+Asl = [0.02]; % [m]
+wind = [.01]; % [m/s]
+windDir = [pi]; % [rad]
+nAct = 11; % number of actuators across the pupil, including the ones outside the pupil
+nL   = nAct-1;
+
+
 nPx  = 17;
 nRes = nL*nPx;
 D    = 0.0195;
 d    = D/nL; % lenslet pitch
-samplingFreq = 500;
+samplingFreq = 10;  %[Hz]
 
-atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',[.5],'windSpeed',[.12],'windDirection',[pi]);
 
+atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',Asl,'windSpeed',wind,'windDirection',windDir);
 tel = telescope(D,'resolution',nRes,'fieldOfViewInArcsec',30,'samplingTime',1/samplingFreq);
 
 wfs = shackHartmann(nL,nRes,0.85);
@@ -119,10 +125,10 @@ ngs = ngs.*tel*dm*wfs;
 % TODO: put these into a txt file for input
 cam.clockRate    = 1;
 instantCam.clockRate    = 1;
-exposureTime     = 1000;
+exposureTime     = 100;
 cam.exposureTime = exposureTime;
 instantCam.exposureTime = 1;
-startDelay       = 20;
+startDelay       = 10;
 
 gain_cl  = 0.5 % integrator gain
 
@@ -160,9 +166,9 @@ if exist(fileID_rwfe, 'file'), delete(fileID_rwfe); end
 
 
 %% Regulation
-
+gain_cl = .8;
 flush(cam)
-% the start delay could be implemented using 2 loops. the 1st is a startup to stabilise the regulator, and the 2nd is the main loop to collect data.
+% the start delay could be implemented using 2 loops. The 1st is a startup to stabilise the regulator, and the 2nd is the main loop to collect data.
 for k=1:nIteration
     % Objects update
     flush(instantCam)
@@ -174,10 +180,10 @@ for k=1:nIteration
     dm.coefs = dm.coefs - gain_cl*calibDm.M*wfs.slopes;
     dm.coefs = min(max(dm.coefs, -1), 1);
     % local log
-    WFHistory(:,:,k) = ngs.meanRmPhase;
-    WFSHistory(:,k) = wfs.slopes;
-    lightfieldHistory(:,:,k) = wfs.camera.frame;
-    dmCommandsHistory(:, k) = dm.coefs;
+    % WFHistory(:,:,k) = ngs.meanRmPhase;
+    % WFSHistory(:,k) = wfs.slopes;
+    % lightfieldHistory(:,:,k) = wfs.camera.frame;
+    % dmCommandsHistory(:, k) = dm.coefs;
     rwfe_waves_history(k) = sqrt(var(ngs))./2/pi; % [waves]
     psfHistory(:,:,k) = instantCam.frame;
 end
@@ -226,15 +232,15 @@ flux_ratio = psf_sum_flux / long_psf_flux;
 fprintf('Flux ratio (iPsfSum / Long PSF): %.3f\n', flux_ratio);
 
 
-h5create(fileID_WF, '/wf', size(WFHistory));
-h5write(fileID_WF, '/wf', WFHistory);
-h5create(fileID_WFS, '/wfs', size(WFSHistory));
-h5write(fileID_WFS, '/wfs', WFSHistory);
-h5create(fileID_lightfield, '/wf_lightfield', size(lightfieldHistory));
-h5write(fileID_lightfield, '/wf_lightfield', lightfieldHistory);
-h5create(fileID_DM, '/dm_commands', size(dmCommandsHistory));
-h5write(fileID_DM, '/dm_commands', dmCommandsHistory);
-h5create(fileID_psf, '/psf_history', size(psfHistory));
-h5write(fileID_psf, '/psf_history', psfHistory);
-h5create(fileID_rwfe, '/rwfe_waves_history', size(rwfe_waves_history));
-h5write(fileID_rwfe, '/rwfe_waves_history', rwfe_waves_history);
+% h5create(fileID_WF, '/wf', size(WFHistory));
+% h5write(fileID_WF, '/wf', WFHistory);
+% h5create(fileID_WFS, '/wfs', size(WFSHistory));
+% h5write(fileID_WFS, '/wfs', WFSHistory);
+% h5create(fileID_lightfield, '/wf_lightfield', size(lightfieldHistory));
+% h5write(fileID_lightfield, '/wf_lightfield', lightfieldHistory);
+% h5create(fileID_DM, '/dm_commands', size(dmCommandsHistory));
+% h5write(fileID_DM, '/dm_commands', dmCommandsHistory);
+% h5create(fileID_psf, '/psf_history', size(psfHistory));
+% h5write(fileID_psf, '/psf_history', psfHistory);
+% h5create(fileID_rwfe, '/rwfe_waves_history', size(rwfe_waves_history));
+% h5write(fileID_rwfe, '/rwfe_waves_history', rwfe_waves_history);

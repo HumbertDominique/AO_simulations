@@ -8,8 +8,11 @@ addpath('OOMAO')
 ngs = source;
 
 % TODO: put these into a txt file for input
-r0 = 1.5e-3; %[m]
+r0 = 3.75e-3; %[m]
 L0 = 30; % [m]
+Asl = [0.02]; % [m]
+wind = [0.4]; % [m/s]
+windDir = [pi]; % [rad]
 nAct = 11; % number of actuators across the pupil, including the ones outside the pupil
 nL   = nAct*4;
 nPx  = 27;
@@ -19,10 +22,9 @@ D    = 0.0195;
 d    = D/nL; % lenslet pitch
 samplingFreq = 500;
 
-atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',[.5],'windSpeed',[.12],'windDirection',[pi]);
 
+atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',Asl,'windSpeed',wind,'windDirection',windDir);
 tel = telescope(D,'resolution',nRes,'fieldOfViewInArcsec',30,'samplingTime',1/samplingFreq);
-
 wfs = shackHartmann(nL,nRes,0.85);
 
 ngs = ngs.*tel*wfs;
