@@ -10,7 +10,7 @@ ngs = source;
 r0 = 3.75e-3; %[m]
 L0 = 30; % [m]
 Asl = [0.05]; % [m]
-wind = [.002]; % [m/s]
+wind = [.4]; % [m/s]
 windDir = [pi]; % [rad]
 nAct = 11; % number of actuators across the pupil, including the ones outside the pupil
 nL   = nAct-1;
@@ -124,7 +124,7 @@ ngs = ngs.*tel*dm*wfs;
 % TODO: put these into a txt file for input
 cam.clockRate    = 1;
 instantCam.clockRate    = 1;
-exposureTime     = 20;
+exposureTime     = 1000;
 cam.exposureTime = exposureTime;
 instantCam.exposureTime = 1;
 startDelay       = 10;

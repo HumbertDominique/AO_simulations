@@ -1,4 +1,4 @@
-function PSF_R_AOSsim(wind, i)
+function PSF_R_AOSsim(wind, gain, z)
     close all
     addpath('OOMAO')
 
@@ -100,12 +100,12 @@ function PSF_R_AOSsim(wind, i)
 
     cam.clockRate    = 1;
     instantCam.clockRate    = 1;
-    exposureTime     = 100;
+    exposureTime     = 110;
     cam.exposureTime = exposureTime;
     instantCam.exposureTime = 1;
     startDelay       = 10;
     
-    gain_cl  = 0.5 % integrator gain
+    gain_cl  = gain % integrator gain
     
     wfs.camera.photonNoise = false;
     wfs.camera.readOutNoise = 0;
@@ -118,7 +118,6 @@ function PSF_R_AOSsim(wind, i)
 
     psfHistory = zeros(size(instantCam.frame, 1), size(instantCam.frame, 2),nIteration);
     rwfe_waves_history = zeros(nIteration,1);
-
     cam.frameListener.Enabled = false;
     instantCam.frameListener.Enabled = false;
     flush(cam)
@@ -145,14 +144,15 @@ function PSF_R_AOSsim(wind, i)
     strehl_long = cam.strehl;
     % strehl_inst = instantCam.strehl;
 
-    if i == 1
+    if i == z
         fid = fopen('strehl_long.csv','w');
         if fid == -1
             error('Could not open strehl_long.csv for writing.');
         else
-        fprintf(fid, 'wind,strehl_long\n'); % Write header
+        fprintf(fid, 'wind,strehl_long'); % Write header
         end
     end
+
     fid = fopen('strehl_long.csv','a');
     if fid == -1
         error('Could not open strehl_long.csv for appending.');
@@ -162,7 +162,7 @@ function PSF_R_AOSsim(wind, i)
     
 
 
-    if i == 1
+    if i == z
         fid = fopen('rwfe_waves_history.csv','w');
         if fid == -1
             error('Could not open rwfe_waves_history.csv for writing.');
@@ -177,11 +177,12 @@ function PSF_R_AOSsim(wind, i)
         error('Could not open rwfe_waves_history.csv for appending.');
     end
     fprintf(fid, '%.6f', wind);
-    for k = 1:numel(rwfe_waves_history)
-        fprintf(fid, ',%.6f', rwfe_waves_history);
-    end
+    % for k = 1:numel(rwfe_waves_history)
+    fprintf(fid, ',%.6f', rwfe_waves_history);
+    % end
     fprintf(fid, '\n');
     fclose(fid);
-    
+
+
 clear all
 end    
