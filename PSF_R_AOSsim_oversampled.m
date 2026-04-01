@@ -126,8 +126,8 @@ ngs = ngs.*tel*dm*wfs;
 %% Regulation settings
 
 % TODO: put these into a txt file for input
-cam.clockRate    = 1;
-instantCam.clockRate    = 1;
+cam.clockRate    = 1000;
+instantCam.clockRate    = 1000;
 exposureTime     = 100;
 cam.exposureTime = exposureTime;
 instantCam.exposureTime = 1;
@@ -173,6 +173,7 @@ if exist(fileID_rwfe, 'file'), delete(fileID_rwfe); end
 flush(cam)
 % the start delay could be implemented using 2 loops. the 1st is a startup to stabilise the regulator, and the 2nd is the main loop to collect data.
 for k=1:nIteration
+    fprintf('Iteration: %d\n', k);
     % Objects update
     flush(instantCam)
     +tel;
@@ -236,15 +237,15 @@ flux_ratio = psf_sum_flux / long_psf_flux;
 fprintf('Flux ratio (iPsfSum / Long PSF): %.3f\n', flux_ratio);
 
 
-h5create(fileID_WF, '/wf', size(WFHistory));
-h5write(fileID_WF, '/wf', WFHistory);
-h5create(fileID_WFS, '/wfs', size(WFSHistory));
-h5write(fileID_WFS, '/wfs', WFSHistory);
-h5create(fileID_lightfield, '/wf_lightfield', size(lightfieldHistory));
-h5write(fileID_lightfield, '/wf_lightfield', lightfieldHistory);
-h5create(fileID_DM, '/dm_commands', size(dmCommandsHistory));
-h5write(fileID_DM, '/dm_commands', dmCommandsHistory);
-h5create(fileID_psf, '/psf_history', size(psfHistory));
-h5write(fileID_psf, '/psf_history', psfHistory);
-h5create(fileID_rwfe, '/rwfe_waves_history', size(rwfe_waves_history));
-h5write(fileID_rwfe, '/rwfe_waves_history', rwfe_waves_history);
+% h5create(fileID_WF, '/wf', size(WFHistory));
+% h5write(fileID_WF, '/wf', WFHistory);
+% h5create(fileID_WFS, '/wfs', size(WFSHistory));
+% h5write(fileID_WFS, '/wfs', WFSHistory);
+% h5create(fileID_lightfield, '/wf_lightfield', size(lightfieldHistory));
+% h5write(fileID_lightfield, '/wf_lightfield', lightfieldHistory);
+% h5create(fileID_DM, '/dm_commands', size(dmCommandsHistory));
+% h5write(fileID_DM, '/dm_commands', dmCommandsHistory);
+% h5create(fileID_psf, '/psf_history', size(psfHistory));
+% h5write(fileID_psf, '/psf_history', psfHistory);
+% h5create(fileID_rwfe, '/rwfe_waves_history', size(rwfe_waves_history));
+% h5write(fileID_rwfe, '/rwfe_waves_history', rwfe_waves_history);

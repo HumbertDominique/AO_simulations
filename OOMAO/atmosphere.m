@@ -173,7 +173,7 @@ classdef atmosphere < hgsetget
             end
             if p.Results.logging
                 obj.p_log = logBook.checkIn(obj);
-                %display(obj);
+                display(obj);
             end
             if isempty(p.Results.randStream)
                 obj.rngStream = RandStream('mt19937ar');
