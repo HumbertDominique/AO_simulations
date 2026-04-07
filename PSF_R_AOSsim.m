@@ -152,8 +152,8 @@ nIteration = startDelay + exposureTime;
 
 % Performance history
 
-nBatch = ceil(nIteration*(size(wfs.camera.frame, 1)* size(wfs.camera.frame, 2))/(chunksize*1e6));
-batchItSize = floor(nIteration/(nIteration*(size(wfs.camera.frame, 1)* size(wfs.camera.frame, 2))/(chunksize*1e6)));
+nBatch = ceil(nIteration*(size(wfs.camera.frame, 1)* size(wfs.camera.frame, 2))/(chunksize));
+batchItSize = floor(nIteration/(nIteration*(size(wfs.camera.frame, 1)* size(wfs.camera.frame, 2))/(chunksize)));
 LastBatchItSize = nIteration - batchItSize*(nBatch-1);
 fprintf('----------------------------------------------------------------\n');
 fprintf('Total number of iterations to store: %d\n',nIteration);
@@ -178,10 +178,10 @@ if exist(fileID_metadata+".txt", 'file'), delete(fileID_metadata+".txt"); end
 
 % WFHistory = zeros(size(ngs.meanRmPhase,1),size(ngs.meanRmPhase,2),batchItSize);
 WFSHistory = zeros(length(wfs.slopes),batchItSize);
-lightfieldHistory = zeros(size(wfs.camera.frame, 1), size(wfs.camera.frame, 2),batchItSize);
+lightfieldHistory = zeros(size(wfs.camera.frame, 1), size(wfs.camera.frame, 2),batchItSize, 'uint8');
 dmCommandsHistory = zeros(length(dm.coefs),batchItSize);
-psfHistory = zeros(size(instantCam.frame, 1), size(instantCam.frame, 2),batchItSize);
-rwfe_history = zeros(batchItSize,1);
+psfHistory = zeros(size(instantCam.frame, 1), size(instantCam.frame, 2),batchItSize, 'uint8');
+rwfe_waves_history = zeros(batchItSize,1);
 
 
 %% Regulation
@@ -214,7 +214,7 @@ for k=1:nIteration
     dmCommandsHistory(:, indexInBatch) = dm.coefs;
     rwfe_waves_history(indexInBatch) = sqrt(var(ngs))./2/pi; % [waves]
     psfHistory(:,:,indexInBatch) = uint8(floor(instantCam.frame*255));
-    % psfHistory(:,:,indexInBatch) = instantCam.frame;
+    
     if mod(k-1, round(nIteration/50)) == 0 || k == nIteration
         fprintf('Progress: %d%% done\n', round(100*k/nIteration));
     end
@@ -222,27 +222,45 @@ for k=1:nIteration
     if mod(k, batchItSize) == 0 || k == nIteration
         fprintf('Saving batch %d/%d to disk...\n', ceil(k/batchItSize), nBatch);
         batchIndex = ceil(k/batchItSize);
-
+        
         if SAVEWF
-            h5create(fileID_WF+string(batchIndex)+".h5", '/wf', size(WFHistory));
+            sz = size(WFHistory);
+            h5create(fileID_WF+string(batchIndex)+".h5", '/wf', sz, 'ChunkSize', [sz(1) sz(2) 1], 'DataType', 'double');
             h5write(fileID_WF+string(batchIndex)+".h5", '/wf', WFHistory);
         end
-        h5create(fileID_WFS+string(batchIndex)+".h5", '/wfs', size(WFSHistory));
+        sz = size(WFSHistory);
+        h5create(fileID_WFS+string(batchIndex)+".h5", '/wfs', sz, 'ChunkSize', [sz(1) 1], 'DataType', 'double');
         h5write(fileID_WFS+string(batchIndex)+".h5", '/wfs', WFSHistory);
-        h5create(fileID_lightfield+string(batchIndex)+".h5", '/wf_lightfield', size(lightfieldHistory));
+        WFSHistory = zeros(length(wfs.slopes),batchItSize);
+
+        sz = size(lightfieldHistory);
+        totBytes = prod(sz);   % for uint8, this is roughly the expected file size
+        fprintf('Dataset size: [%d,%d,%d] -> %d bytes\n', sz, totBytes);
+        h5create(fileID_lightfield+string(batchIndex)+".h5", '/wf_lightfield', sz, 'ChunkSize', [sz(1) sz(2) 1],'DataType', 'uint8');
         h5write(fileID_lightfield+string(batchIndex)+".h5", '/wf_lightfield', lightfieldHistory);
-        h5create(fileID_DM+string(batchIndex)+".h5", '/dm_commands', size(dmCommandsHistory));
+        lightfieldHistory = zeros(size(wfs.camera.frame, 1), size(wfs.camera.frame, 2),batchItSize);
+
+        sz = size(dmCommandsHistory);
+        h5create(fileID_DM+string(batchIndex)+".h5", '/dm_commands', sz, 'ChunkSize', [sz(1) 1], 'DataType', 'double');
         h5write(fileID_DM+string(batchIndex)+".h5", '/dm_commands', dmCommandsHistory);
-        h5create(fileID_psf+string(batchIndex)+".h5", '/psf_history', size(psfHistory));
+        dmCommandsHistory = zeros(length(dm.coefs),batchItSize);
+
+        sz = size(psfHistory);
+        h5create(fileID_psf+string(batchIndex)+".h5", '/psf_history', sz, 'ChunkSize', [sz(1) sz(2) 1], 'DataType', 'uint8');
         h5write(fileID_psf+string(batchIndex)+".h5", '/psf_history', psfHistory);
-        h5create(fileID_rwfe+string(batchIndex)+".h5", '/rwfe_waves_history', size(rwfe_waves_history));
+        psfHistory = zeros(size(instantCam.frame, 1), size(instantCam.frame, 2),batchItSize);
+
+        sz = size(rwfe_waves_history);
+        h5create(fileID_rwfe+string(batchIndex)+".h5", '/rwfe_waves_history', sz, 'ChunkSize', [sz(1) 1], 'DataType', 'double');
         h5write(fileID_rwfe+string(batchIndex)+".h5", '/rwfe_waves_history', rwfe_waves_history);
-        h5create(fileID_diff_limited+string(batchIndex)+".h5", '/diff_limited', size(diff_limited));
-        h5write(fileID_diff_limited+string(batchIndex)+".h5", '/diff_limited', diff_limited);
+        rwfe_waves_history = zeros(batchItSize,1);
+
         indexInBatch = 0;
     end
 end
-
+sz = size(diff_limited);
+h5create(fileID_diff_limited+".h5", '/diff_limited', sz, 'ChunkSize', [sz(1) 1]);
+h5write(fileID_diff_limited+".h5", '/diff_limited', diff_limited);
 % h5create(fileID_WF, '/wf', size(WFHistory));
 % h5write(fileID_WF, '/wf', WFHistory);
 % h5create(fileID_WFS, '/wfs', size(WFSHistory));   
