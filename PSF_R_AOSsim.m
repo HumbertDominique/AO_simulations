@@ -3,29 +3,46 @@ clear all
 close all
 addpath('OOMAO')
 
+cfg = readConfig('ao_inputs.txt');
+r0           = cfg.r0;
+L0           = cfg.L0;
+Asl          = cfg.Asl;
+wind         = cfg.wind;
+windDir      = cfg.windDir;
+nAct         = cfg.nAct;
+oversampling  = cfg.oversampling;
+if oversampling ~= 1
+    nAct = nAct * oversampling;
+else
+    nL           = nAct - 1;
+end
+nPx          = cfg.nPx;
+nRes         = nL * nPx;
+D            = cfg.D;
+d            = D / nL;
+samplingFreq = cfg.samplingFreq;
+chunksize    = cfg.chunksize;
+exposureTime = cfg.exposureTime;
+startDelay   = cfg.startDelay;
+gain_cl      = cfg.gain_cl;
+SAVEWF       = cfg.SAVEWF;
+fileID_WF           = cfg.fileID_WF;
+fileID_WFS          = cfg.fileID_WFS;
+fileID_lightfield   = cfg.fileID_lightfield;
+fileID_DM           = cfg.fileID_DM;
+fileID_psf          = cfg.fileID_psf;
+fileID_rwfe         = cfg.fileID_rwfe;
+fileID_diff_limited = cfg.fileID_diff_limited;
+fileID_metadata     = cfg.fileID_metadata;
 
 ngs = source;
-
-% TODO: put these into a txt file for input
-r0 = 3.75e-3; %[m]
-L0 = 30; % [m]
-Asl = [0.02]; % [m]
-wind = [.0178]; % [m/s]
-windDir = [pi]; % [rad]
-nAct = 11; % number of actuators across the pupil, including the ones outside the pupil
-nL   = nAct-1;
-
-nPx  = 17;
-nRes = nL*nPx;
-D    = 0.0195;
-d    = D/nL; % lenslet pitch
-samplingFreq = 30;  %[Hz]
-
 
 atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',Asl,'windSpeed',wind,'windDirection',windDir);
 tel = telescope(D,'resolution',nRes,'fieldOfViewInArcsec',30,'samplingTime',1/samplingFreq);
 
 wfs = shackHartmann(nL,nRes,0.85);
+wfs.camera.photonNoise  = cfg.photonNoise;
+wfs.camera.readOutNoise = cfg.readOutNoise;
 
 ngs = ngs.*tel*wfs;
 
@@ -126,16 +143,8 @@ ngs = ngs.*tel*dm*wfs;
 % TODO: put these into a txt file for input
 cam.clockRate    = 1;
 instantCam.clockRate    = 1;
-exposureTime     = 50;
 cam.exposureTime = exposureTime;
 instantCam.exposureTime = 1;
-startDelay       = 10;
-
-gain_cl  = 0.5; % integrator gain
-
-wfs.camera.photonNoise = false;
-wfs.camera.readOutNoise = 0;
-
 
 dm.coefs = zeros(dm.nValidActuator,1);
 cam.startDelay = startDelay;
@@ -143,29 +152,36 @@ nIteration = startDelay + exposureTime;
 
 % Performance history
 
-% TODO: put these into a txt file for input
-fileID_WF = 'ao_WF.h5';
-fileID_WFS = 'ao_WFS.h5';
-fileID_lightfield = 'ao_lightfield.h5';
-fileID_DM = 'ao_DM.h5';
-fileID_psf = 'ao_psf.h5';
-fileID_rwfe = 'ao_rwfe.h5';
-fileID_diff_limited = 'ao_diff_limited.h5';
+nBatch = ceil(nIteration*(size(wfs.camera.frame, 1)* size(wfs.camera.frame, 2))/(chunksize*1e6));
+batchItSize = floor(nIteration/(nIteration*(size(wfs.camera.frame, 1)* size(wfs.camera.frame, 2))/(chunksize*1e6)));
+LastBatchItSize = nIteration - batchItSize*(nBatch-1);
+fprintf('----------------------------------------------------------------\n');
+fprintf('Total number of iterations to store: %d\n',nIteration);
+fprintf('Qty of batches: %d\n',nBatch);
+fprintf('Batch size [iterations]: %d\n', batchItSize);
+fprintf('Last batch size [iterations]: %d\n', LastBatchItSize);
+fprintf('----------------------------------------------------------------\n');
 
 
-WFHistory = zeros(size(ngs.meanRmPhase,1),size(ngs.meanRmPhase,2),nIteration);
-WFSHistory = zeros(length(wfs.slopes),nIteration);
-lightfieldHistory = zeros(size(wfs.camera.frame, 1), size(wfs.camera.frame, 2),nIteration,'uint8');
-dmCommandsHistory = zeros(length(dm.coefs),nIteration);
-psfHistory = zeros(size(instantCam.frame, 1), size(instantCam.frame, 2),nIteration,"uint8");
-rwfe_history = zeros(nIteration,1);
-if exist(fileID_WF, 'file'), delete(fileID_WF); end
-if exist(fileID_WFS, 'file'), delete(fileID_WFS); end
-if exist(fileID_DM, 'file'), delete(fileID_DM); end
-if exist(fileID_lightfield, 'file'), delete(fileID_lightfield); end
-if exist(fileID_psf, 'file'), delete(fileID_psf); end
-if exist(fileID_rwfe, 'file'), delete(fileID_rwfe); end
-if exist(fileID_diff_limited, 'file'), delete(fileID_diff_limited); end
+for i = 1 : batchItSize
+    if SAVEWF
+         if exist(fileID_WF+string(i)+".h5", 'file'), delete(fileID_WF+string(i)+".h5"); end
+    end
+    if exist(fileID_WFS+string(i)+".h5", 'file'), delete(fileID_WFS+string(i)+".h5"); end
+    if exist(fileID_DM+string(i)+".h5", 'file'), delete(fileID_DM+string(i)+".h5"); end
+    if exist(fileID_lightfield+string(i)+".h5", 'file'), delete(fileID_lightfield+string(i)+".h5"); end
+    if exist(fileID_psf+string(i)+".h5", 'file'), delete(fileID_psf+string(i)+".h5"); end
+    if exist(fileID_rwfe+string(i)+".h5", 'file'), delete(fileID_rwfe+string(i)+".h5"); end
+    if exist(fileID_diff_limited+string(i)+".h5", 'file'), delete(fileID_diff_limited+string(i)+".h5"); end
+end
+if exist(fileID_metadata+".txt", 'file'), delete(fileID_metadata+".txt"); end
+
+% WFHistory = zeros(size(ngs.meanRmPhase,1),size(ngs.meanRmPhase,2),batchItSize);
+WFSHistory = zeros(length(wfs.slopes),batchItSize);
+lightfieldHistory = zeros(size(wfs.camera.frame, 1), size(wfs.camera.frame, 2),batchItSize);
+dmCommandsHistory = zeros(length(dm.coefs),batchItSize);
+psfHistory = zeros(size(instantCam.frame, 1), size(instantCam.frame, 2),batchItSize);
+rwfe_history = zeros(batchItSize,1);
 
 
 %% Regulation
@@ -175,7 +191,11 @@ flush(instantCam)
 % the start delay could be implemented using 2 loops. The 1st is a startup to stabilise the regulator, and the 2nd is the main loop to collect data.
 
 % the start delay could be implemented using 2 loops. The 1st is a startup to stabilise the regulator, and the 2nd is the main loop to collect data.
+
+indexInBatch = 0;
+
 for k=1:nIteration
+    indexInBatch = indexInBatch + 1;
     % Objects update
     % flush(instantCam)
     instantCam.frame = [];
@@ -188,83 +208,112 @@ for k=1:nIteration
     dm.coefs = dm.coefs - gain_cl*calibDm.M*wfs.slopes;
     dm.coefs = min(max(dm.coefs, -1), 1);
     % local log
-    WFHistory(:,:,k) = ngs.meanRmPhase;
-    WFSHistory(:,k) = wfs.slopes;
-    lightfieldHistory(:,:,k) = uint8(floor(wfs.camera.frame*255));
-    dmCommandsHistory(:, k) = dm.coefs;
-    rwfe_waves_history(k) = sqrt(var(ngs))./2/pi; % [waves]
-    psfHistory(:,:,k) = uint8(floor(instantCam.frame*255));
-    % psfHistory(:,:,k) = instantCam.frame;
+    WFHistory(:,:,indexInBatch) = ngs.meanRmPhase;
+    WFSHistory(:,indexInBatch) = wfs.slopes;
+    lightfieldHistory(:,:,indexInBatch) = uint8(floor(wfs.camera.frame*255));
+    dmCommandsHistory(:, indexInBatch) = dm.coefs;
+    rwfe_waves_history(indexInBatch) = sqrt(var(ngs))./2/pi; % [waves]
+    psfHistory(:,:,indexInBatch) = uint8(floor(instantCam.frame*255));
+    % psfHistory(:,:,indexInBatch) = instantCam.frame;
     if mod(k-1, round(nIteration/50)) == 0 || k == nIteration
         fprintf('Progress: %d%% done\n', round(100*k/nIteration));
     end
+    % fprintf('Current iteration: %d\n', mod(k, batchItSize))
+    if mod(k, batchItSize) == 0 || k == nIteration
+        fprintf('Saving batch %d/%d to disk...\n', ceil(k/batchItSize), nBatch);
+        batchIndex = ceil(k/batchItSize);
+
+        if SAVEWF
+            h5create(fileID_WF+string(batchIndex)+".h5", '/wf', size(WFHistory));
+            h5write(fileID_WF+string(batchIndex)+".h5", '/wf', WFHistory);
+        end
+        h5create(fileID_WFS+string(batchIndex)+".h5", '/wfs', size(WFSHistory));
+        h5write(fileID_WFS+string(batchIndex)+".h5", '/wfs', WFSHistory);
+        h5create(fileID_lightfield+string(batchIndex)+".h5", '/wf_lightfield', size(lightfieldHistory));
+        h5write(fileID_lightfield+string(batchIndex)+".h5", '/wf_lightfield', lightfieldHistory);
+        h5create(fileID_DM+string(batchIndex)+".h5", '/dm_commands', size(dmCommandsHistory));
+        h5write(fileID_DM+string(batchIndex)+".h5", '/dm_commands', dmCommandsHistory);
+        h5create(fileID_psf+string(batchIndex)+".h5", '/psf_history', size(psfHistory));
+        h5write(fileID_psf+string(batchIndex)+".h5", '/psf_history', psfHistory);
+        h5create(fileID_rwfe+string(batchIndex)+".h5", '/rwfe_waves_history', size(rwfe_waves_history));
+        h5write(fileID_rwfe+string(batchIndex)+".h5", '/rwfe_waves_history', rwfe_waves_history);
+        h5create(fileID_diff_limited+string(batchIndex)+".h5", '/diff_limited', size(diff_limited));
+        h5write(fileID_diff_limited+string(batchIndex)+".h5", '/diff_limited', diff_limited);
+        indexInBatch = 0;
+    end
 end
 
+% h5create(fileID_WF, '/wf', size(WFHistory));
+% h5write(fileID_WF, '/wf', WFHistory);
+% h5create(fileID_WFS, '/wfs', size(WFSHistory));   
+% h5write(fileID_WFS, '/wfs', WFSHistory);
+% h5create(fileID_lightfield, '/wf_lightfield', size(lightfieldHistory));
+% h5write(fileID_lightfield, '/wf_lightfield', lightfieldHistory);
+% h5create(fileID_DM, '/dm_commands', size(dmCommandsHistory));
+% h5write(fileID_DM, '/dm_commands', dmCommandsHistory);
+% h5create(fileID_psf, '/psf_history', size(psfHistory));
+% h5write(fileID_psf, '/psf_history', psfHistory);
+% h5create(fileID_rwfe, '/rwfe_waves_history', size(rwfe_waves_history));
+% h5write(fileID_rwfe, '/rwfe_waves_history', rwfe_waves_history);
+% h5create(fileID_diff_limited, '/diff_limited', size(diff_limited));
+% h5write(fileID_diff_limited, '/diff_limited', diff_limited);
+
+rowNames = {'D';'r0';'L0';'Asl';'wind';'windDir';'Exposure time';'nIteration';'gain_cl';'batchItSize';'nBatch';'LastBatchItSize'};
+values =    [D;  r0;  L0;  Asl;  wind;  windDir;  exposureTime;   nIteration;  gain_cl;  batchItSize;  nBatch;  LastBatchItSize];
+T = table(values,'RowNames',rowNames);
+writetable(T,fileID_metadata+".txt",'Delimiter','\t','WriteRowNames',true);
 
 %% s
-maxValue = max(psfHistory, [], 'all');
-fprintf('Maximum value in frame 30: %f\n', maxValue);
+% maxValue = max(psfHistory, [], 'all');
+% fprintf('Maximum value in frame 30: %f\n', maxValue);
+% % figure;
+% fprintf('max long psf value: %f\n', sum(cam.frame(:)))
+
 % figure;
-fprintf('max long psf value: %f\n', sum(cam.frame(:)))
+% imshow(psfHistory(:,:,21), []);
+% %%
+% psf_sum = sum(psfHistory(:,:,startDelay+1:end), 3);   
 
-figure;
-imshow(psfHistory(:,:,21), []);
-%%
-psf_sum = sum(psfHistory(:,:,startDelay+1:end), 3);   
+% fprintf('Strehl ratio: %4.1f\n',cam.strehl);
+% fprintf('Strehl ratio: %4.1f\n',instantCam.strehl);
 
-fprintf('Strehl ratio: %4.1f\n',cam.strehl);
-fprintf('Strehl ratio: %4.1f\n',instantCam.strehl);
-
-figure;
-subplot(2,1,1);
-plot(rwfe_waves_history, 'o-');
-xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
-title('AO Loop Convergence (Linear Scale)');
-grid on;
-subplot(2,1,2);
-semilogy(rwfe_waves_history, 'o-');
-xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
-title('AO Loop Convergence (Logarithmic Scale)');
-grid on;
+% figure;
+% subplot(2,1,1);
+% plot(rwfe_waves_history, 'o-');
+% xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
+% title('AO Loop Convergence (Linear Scale)');
+% grid on;
+% subplot(2,1,2);
+% semilogy(rwfe_waves_history, 'o-');
+% xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
+% title('AO Loop Convergence (Logarithmic Scale)');
+% grid on;
 
 
-figure;
-imagesc(cam,'parent',subplot(2,2,1));
-title('Long Exposure PSF', 'FontSize', 12, 'FontWeight', 'bold');
-colorbar; axis image;
-imagesc(instantCam,'parent',subplot(2,2,2));
-title('Instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
-colorbar; axis image;
-imagesc(psf_sum,'parent',subplot(2,2,3));
-title('Long psf from instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
-colorbar; axis image;
-imagesc(cam.frame-psf_sum,'parent',subplot(2,2,4));
-title('Long psf - iPsfSum', 'FontSize', 12, 'FontWeight', 'bold');
-colorbar; axis image;
-sgtitle(sprintf('AO Strehl: Long=%.2f, Instant=%.2f', cam.strehl, instantCam.strehl));
+% figure;
+% imagesc(cam,'parent',subplot(2,2,1));
+% title('Long Exposure PSF', 'FontSize', 12, 'FontWeight', 'bold');
+% colorbar; axis image;
+% imagesc(instantCam,'parent',subplot(2,2,2));
+% title('Instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
+% colorbar; axis image;
+% imagesc(psf_sum,'parent',subplot(2,2,3));
+% title('Long psf from instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
+% colorbar; axis image;
+% imagesc(cam.frame-psf_sum,'parent',subplot(2,2,4));
+% title('Long psf - iPsfSum', 'FontSize', 12, 'FontWeight', 'bold');
+% colorbar; axis image;
+% sgtitle(sprintf('AO Strehl: Long=%.2f, Instant=%.2f', cam.strehl, instantCam.strehl));
 
 
-psf_sum_flux = sum(psf_sum(:));
-long_psf_flux = sum(cam.frame(:));
+% psf_sum_flux = sum(psf_sum(:));
+% long_psf_flux = sum(cam.frame(:));
 
-fprintf('Flux in long exposure PSF: %.2e\n', long_psf_flux);
-fprintf('Flux in sum of instantaneous PSFs: %.2e\n', psf_sum_flux);
+% fprintf('Flux in long exposure PSF: %.2e\n', long_psf_flux);
+% fprintf('Flux in sum of instantaneous PSFs: %.2e\n', psf_sum_flux);
 
-flux_ratio = psf_sum_flux / long_psf_flux;
-fprintf('Flux ratio (iPsfSum / Long PSF): %.3f\n', flux_ratio);
+% flux_ratio = psf_sum_flux / long_psf_flux;
+% fprintf('Flux ratio (iPsfSum / Long PSF): %.3f\n', flux_ratio);
 
 
-h5create(fileID_WF, '/wf', size(WFHistory));
-h5write(fileID_WF, '/wf', WFHistory);
-h5create(fileID_WFS, '/wfs', size(WFSHistory));
-h5write(fileID_WFS, '/wfs', WFSHistory);
-h5create(fileID_lightfield, '/wf_lightfield', size(lightfieldHistory));
-h5write(fileID_lightfield, '/wf_lightfield', lightfieldHistory);
-h5create(fileID_DM, '/dm_commands', size(dmCommandsHistory));
-h5write(fileID_DM, '/dm_commands', dmCommandsHistory);
-h5create(fileID_psf, '/psf_history', size(psfHistory));
-h5write(fileID_psf, '/psf_history', psfHistory);
-h5create(fileID_rwfe, '/rwfe_waves_history', size(rwfe_waves_history));
-h5write(fileID_rwfe, '/rwfe_waves_history', rwfe_waves_history);
-h5create(fileID_diff_limited, '/diff_limited', size(diff_limited));
-h5write(fileID_diff_limited, '/diff_limited', diff_limited);
+clear WFHistory WFSHistory lightfieldHistory dmCommandsHistory psfHistory rwfe_history
