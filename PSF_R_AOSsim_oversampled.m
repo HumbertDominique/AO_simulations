@@ -10,7 +10,12 @@ Asl          = cfg.Asl;
 wind         = cfg.wind;
 windDir      = cfg.windDir;
 nAct         = cfg.nAct;
-nL           = nAct - 1;
+oversampling  = cfg.oversampling;
+if oversampling ~= 1
+    nL = nAct * oversampling;
+else
+    nL           = nAct - 1;
+end
 nPx          = cfg.nPx;
 nRes         = nL * nPx;
 D            = cfg.D;
@@ -31,12 +36,13 @@ fileID_diff_limited = cfg.fileID_diff_limited;
 fileID_metadata     = cfg.fileID_metadata;
 
 
+
 ngs = source;
 
 
 atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',Asl,'windSpeed',wind,'windDirection',windDir);
 tel = telescope(D,'resolution',nRes,'fieldOfViewInArcsec',30,'samplingTime',1/samplingFreq);
-wfs = shackHartmann(nL,nRes,0.85);
+wfs = shackHartmann(nL,nRes,0.50);
 
 ngs = ngs.*tel*wfs;
 
@@ -78,7 +84,7 @@ wfs.pointingDirection = [];
 
 
 bifa = influenceFunction('monotonic',0.75);
-dm = deformableMirror(nAct,'modes',bifa, 'resolution',tel.resolution);
+dm = deformableMirror(nAct+2,'modes',bifa, 'resolution',tel.resolution);
 % dm = deformableMirror(nAct,'modes',bifa, 'resolution',tel.resolution, 'validActuator', wfs.validActuator);
 
 calibDm = calibration(dm,wfs,ngs,ngs.wavelength/40);

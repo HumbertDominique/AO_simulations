@@ -40,7 +40,7 @@ ngs = source;
 atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',Asl,'windSpeed',wind,'windDirection',windDir);
 tel = telescope(D,'resolution',nRes,'fieldOfViewInArcsec',30,'samplingTime',1/samplingFreq);
 
-wfs = shackHartmann(nL,nRes,0.85);
+wfs = shackHartmann(nL,nRes,0.50);
 wfs.camera.photonNoise  = cfg.photonNoise;
 wfs.camera.readOutNoise = cfg.readOutNoise;
 
@@ -84,7 +84,7 @@ wfs.pointingDirection = [];
 
 
 bifa = influenceFunction('monotonic',0.75);
-dm = deformableMirror(nL+1,'modes',bifa,...
+dm = deformableMirror(nL+2,'modes',bifa,...
     'resolution',tel.resolution,...
     'validActuator',wfs.validActuator);
 
@@ -264,56 +264,56 @@ T = table(values,'RowNames',rowNames);
 writetable(T,fileID_metadata+".txt",'Delimiter','\t','WriteRowNames',true);
 
 %% s
-% maxValue = max(psfHistory, [], 'all');
-% fprintf('Maximum value in frame 30: %f\n', maxValue);
-% % figure;
-% fprintf('max long psf value: %f\n', sum(cam.frame(:)))
-
+maxValue = max(psfHistory, [], 'all');
+fprintf('Maximum value in frame 30: %f\n', maxValue);
 % figure;
-% imshow(psfHistory(:,:,21), []);
-% %%
-% psf_sum = sum(psfHistory(:,:,startDelay+1:end), 3);   
+fprintf('max long psf value: %f\n', sum(cam.frame(:)))
 
-% fprintf('Strehl ratio: %4.1f\n',cam.strehl);
-% fprintf('Strehl ratio: %4.1f\n',instantCam.strehl);
+figure;
+imshow(psfHistory(:,:,21), []);
+%%
+psf_sum = sum(psfHistory(:,:,startDelay+1:end), 3);   
 
-% figure;
-% subplot(2,1,1);
-% plot(rwfe_waves_history, 'o-');
-% xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
-% title('AO Loop Convergence (Linear Scale)');
-% grid on;
-% subplot(2,1,2);
-% semilogy(rwfe_waves_history, 'o-');
-% xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
-% title('AO Loop Convergence (Logarithmic Scale)');
-% grid on;
+fprintf('Strehl ratio: %4.1f\n',cam.strehl);
+fprintf('Strehl ratio: %4.1f\n',instantCam.strehl);
 
-
-% figure;
-% imagesc(cam,'parent',subplot(2,2,1));
-% title('Long Exposure PSF', 'FontSize', 12, 'FontWeight', 'bold');
-% colorbar; axis image;
-% imagesc(instantCam,'parent',subplot(2,2,2));
-% title('Instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
-% colorbar; axis image;
-% imagesc(psf_sum,'parent',subplot(2,2,3));
-% title('Long psf from instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
-% colorbar; axis image;
-% imagesc(cam.frame-psf_sum,'parent',subplot(2,2,4));
-% title('Long psf - iPsfSum', 'FontSize', 12, 'FontWeight', 'bold');
-% colorbar; axis image;
-% sgtitle(sprintf('AO Strehl: Long=%.2f, Instant=%.2f', cam.strehl, instantCam.strehl));
+figure;
+subplot(2,1,1);
+plot(rwfe_waves_history, 'o-');
+xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
+title('AO Loop Convergence (Linear Scale)');
+grid on;
+subplot(2,1,2);
+semilogy(rwfe_waves_history, 'o-');
+xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
+title('AO Loop Convergence (Logarithmic Scale)');
+grid on;
 
 
-% psf_sum_flux = sum(psf_sum(:));
-% long_psf_flux = sum(cam.frame(:));
+figure;
+imagesc(cam,'parent',subplot(2,2,1));
+title('Long Exposure PSF', 'FontSize', 12, 'FontWeight', 'bold');
+colorbar; axis image;
+imagesc(instantCam,'parent',subplot(2,2,2));
+title('Instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
+colorbar; axis image;
+imagesc(psf_sum,'parent',subplot(2,2,3));
+title('Long psf from instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
+colorbar; axis image;
+imagesc(cam.frame-psf_sum,'parent',subplot(2,2,4));
+title('Long psf - iPsfSum', 'FontSize', 12, 'FontWeight', 'bold');
+colorbar; axis image;
+sgtitle(sprintf('AO Strehl: Long=%.2f, Instant=%.2f', cam.strehl, instantCam.strehl));
 
-% fprintf('Flux in long exposure PSF: %.2e\n', long_psf_flux);
-% fprintf('Flux in sum of instantaneous PSFs: %.2e\n', psf_sum_flux);
 
-% flux_ratio = psf_sum_flux / long_psf_flux;
-% fprintf('Flux ratio (iPsfSum / Long PSF): %.3f\n', flux_ratio);
+psf_sum_flux = sum(psf_sum(:));
+long_psf_flux = sum(cam.frame(:));
+
+fprintf('Flux in long exposure PSF: %.2e\n', long_psf_flux);
+fprintf('Flux in sum of instantaneous PSFs: %.2e\n', psf_sum_flux);
+
+flux_ratio = psf_sum_flux / long_psf_flux;
+fprintf('Flux ratio (iPsfSum / Long PSF): %.3f\n', flux_ratio);
 
 
 clear WFHistory WFSHistory lightfieldHistory dmCommandsHistory psfHistory rwfe_history

@@ -10,7 +10,7 @@ windDir      = [3.141592653589793]  # [rad] (array of double)Wind direction(s)
 
 # Telescope / WFS geometry
 oversampling = 1             # [-] (uint) Number of lenslet per actuators in 1 dimention.
-nAct         = 11            # [-] (uint)Number of actuators across pupil (including outside)
+nAct         = 9            # [-] (uint) Number of actuators across pupil (not including 1 + 1 on the outside)
 nPx          = 17            # [-] (uint)Pixels per lenslet
 D            = 0.0195        # [m] (double) Telescope diameter
 
