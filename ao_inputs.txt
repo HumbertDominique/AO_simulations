@@ -19,7 +19,7 @@ samplingFreq = 500            # [Hz] (double) AO loop sampling frequency
 
 # Data storage
 chunksize    = 1000e6         # [B] (double) Max RAM size per data for batch saving
-exposureTime = 20000         # [iterations] Long exposure duration
+exposureTime = 100000         # [iterations] Long exposure duration
 startDelay   = 50            # [iterations] AO loop startup delay
 gain_cl      = 0.5           # [-] Integrator gain
 

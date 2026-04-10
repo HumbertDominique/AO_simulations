@@ -257,10 +257,11 @@ for k=1:nIteration
         indexInBatch = 0;
     end
 end
+%%
 sz = size(diff_limited);
 h5create(fileID_diff_limited+".h5", '/diff_limited', sz, 'ChunkSize', [sz(1) 1]);
 h5write(fileID_diff_limited+".h5", '/diff_limited', diff_limited);
-
+%%
 rowNames = {'D';'r0';'L0';'Asl';'wind';'windDir';'Exposure time';'nIteration';'gain_cl';'batchItSize';'nBatch';'LastBatchItSize'};
 values =    [D;  r0;  L0;  Asl;  wind;  windDir;  exposureTime;   nIteration;  gain_cl;  batchItSize;  nBatch;  LastBatchItSize];
 T = table(values,'RowNames',rowNames);
