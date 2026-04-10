@@ -188,9 +188,6 @@ rwfe_history = zeros(batchItSize,1);
 % gain_cl = .9;
 flush(cam)
 flush(instantCam)
-% the start delay could be implemented using 2 loops. The 1st is a startup to stabilise the regulator, and the 2nd is the main loop to collect data.
-
-% the start delay could be implemented using 2 loops. The 1st is a startup to stabilise the regulator, and the 2nd is the main loop to collect data.
 
 indexInBatch = 0;
 

@@ -5,22 +5,22 @@
 r0           = 3.75e-3       # [m] (double) Fried parameter
 L0           = 30            # [m] (double) Outer scale
 Asl          = [0.02]        # [m] (array of double)Layer altitude(s); space-separated for multiple layers
-wind         = [0.0178]      # [m/s] (array of double) Wind speed(s)
-windDir      = [3.141592653589793]  # [rad] (array of double)Wind direction(s)
+wind         = [0.03]      # [m/s] (array of double) Wind speed(s), nominal = 0.0178
+windDir      = [355/113]  # [rad] (array of double)Wind direction(s)
 
 # Telescope / WFS geometry
-oversampling = 1             # [-] (uint) Number of lenslet per actuators in 1 dimention.
-nAct         = 9            # [-] (uint) Number of actuators across pupil (not including 1 + 1 on the outside)
+oversampling = 4             # [-] (uint) Number of lenslet per actuators in 1 dimention.
+nAct         = 9            # [-] (uint)Number of actuators across pupil (including outside)
 nPx          = 17            # [-] (uint)Pixels per lenslet
-D            = 0.0195        # [m] (double) Telescope diameter
+D            = 0.0175        # [m] (double) Telescope diameter
 
 # Timing
-samplingFreq = 30            # [Hz] (double) AO loop sampling frequency
+samplingFreq = 500            # [Hz] (double) AO loop sampling frequency
 
-# Simulation
-chunksize    = 2          # [MB] (double) Max chunk size for batch saving
-exposureTime = 100         # [iterations] Long exposure duration
-startDelay   = 10            # [iterations] AO loop startup delay
+# Data storage
+chunksize    = 1000e6         # [B] (double) Max RAM size per data for batch saving
+exposureTime = 20000         # [iterations] Long exposure duration
+startDelay   = 50            # [iterations] AO loop startup delay
 gain_cl      = 0.5           # [-] Integrator gain
 
 # WFS camera
