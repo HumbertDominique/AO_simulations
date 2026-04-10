@@ -13,8 +13,10 @@ oversampling = 4             # [-] (uint) Number of lenslet per actuators in 1 d
 nAct         = 9            # [-] (uint)Number of actuators across pupil (including outside)
 nPx          = 17            # [-] (uint)Pixels per lenslet
 D            = 0.0175        # [m] (double) Telescope diameter
+D            = 0.0175        # [m] (double) Telescope diameter
 
 # Timing
+samplingFreq = 500            # [Hz] (double) AO loop sampling frequency
 samplingFreq = 500            # [Hz] (double) AO loop sampling frequency
 
 # Data storage
