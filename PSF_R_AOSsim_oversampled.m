@@ -25,7 +25,13 @@ chunksize    = cfg.chunksize;
 exposureTime = cfg.exposureTime;
 startDelay   = cfg.startDelay;
 gain_cl      = cfg.gain_cl;
+SH_ill_thresh = cfg.SH_ill_thresh;
+photonNoise = cfg.photonNoise;
+readOutNoise = cfg.readOutNoise;
+SH_ill_thresh = cfg.SH_ill_thresh;
+
 SAVEWF       = cfg.SAVEWF;
+
 fileID_WF           = cfg.fileID_WF;
 fileID_WFS          = cfg.fileID_WFS;
 fileID_lightfield   = cfg.fileID_lightfield;
@@ -36,13 +42,12 @@ fileID_diff_limited = cfg.fileID_diff_limited;
 fileID_metadata     = cfg.fileID_metadata;
 
 
-
 ngs = source;
 
 
 atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',Asl,'windSpeed',wind,'windDirection',windDir);
 tel = telescope(D,'resolution',nRes,'fieldOfViewInArcsec',30,'samplingTime',1/samplingFreq);
-wfs = shackHartmann(nL,nRes,0.50);
+wfs = shackHartmann(nL,nRes,SH_ill_thresh);
 
 ngs = ngs.*tel*wfs;
 
@@ -93,16 +98,27 @@ calibDm = calibration(dm,wfs,ngs,ngs.wavelength/40);
 wfs.camera.frameListener.Enabled = false;
 wfs.slopesListener.Enabled = false;
 
+wsf.camera.photonNoise = photonNoise
+wsf.camera.readOutNoise = readOutNoise
+
 ngs = ngs.*tel;
 
 tel = tel + atm;
 % figure
 % imagesc(tel)
+
 ngs = ngs.*tel*wfs;
 
 %% Diffraction limited performance
 cam = imager();
 instantCam = imager();
+
+camera.photonNoise = photonNoise;
+cam.readOutNoise = readOutNoise
+
+instantCam.photonNoise = photonNoise;
+instantCam.readOutNoise = readOutNoise
+
 
 ngs = source('zenith',0,'azimuth',0,'magnitude',8);     % AO source
 ngs.log.verbose = false;
@@ -142,7 +158,6 @@ ngs = ngs.*tel*dm*wfs;
 
 %% Regulation settings
 
-% TODO: put these into a txt file for input
 cam.clockRate    = 1;
 instantCam.clockRate    = 1;
 cam.exposureTime = exposureTime;
@@ -187,7 +202,6 @@ rwfe_waves_history = zeros(batchItSize,1);
 
 
 %% Regulation
-% gain_cl = .9;
 flush(cam)
 flush(instantCam)
 
@@ -267,57 +281,73 @@ values =    [D;  r0;  L0;  Asl;  wind;  windDir;  exposureTime;   nIteration;  g
 T = table(values,'RowNames',rowNames);
 writetable(T,fileID_metadata+".txt",'Delimiter','\t','WriteRowNames',true);
 
-%% s
-% maxValue = max(psfHistory, [], 'all');
-% fprintf('Maximum value in frame 30: %f\n', maxValue);
-% % figure;
-% fprintf('max long psf value: %f\n', sum(cam.frame(:)))
-
+% s
+maxValue = max(psfHistory, [], 'all');
+fprintf('Maximum value in frame 30: %f\n', maxValue);
 % figure;
-% imshow(psfHistory(:,:,21), []);
-% %%
-% psf_sum = sum(psfHistory(:,:,startDelay+1:end), 3);   
+fprintf('max long psf value: %f\n', sum(cam.frame(:)))
 
-% fprintf('Strehl ratio: %4.1f\n',cam.strehl);
-% fprintf('Strehl ratio: %4.1f\n',instantCam.strehl);
+figure;
+imshow(psfHistory(:,:,21), []);
+%%
+psf_sum = sum(psfHistory(:,:,startDelay+1:end), 3);   
 
-% figure;
-% subplot(2,1,1);
-% plot(rwfe_waves_history, 'o-');
+fprintf('Strehl ratio: %4.1f\n',cam.strehl);
+fprintf('Strehl ratio: %4.1f\n',instantCam.strehl);
+
+figure;
+subplot(2,1,1);
+plot(rwfe_waves_history, 'o-');
+xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
+title('AO Loop Convergence (Linear Scale)');
+grid on;
+subplot(2,1,2);
+semilogy(rwfe_waves_history, 'o-');
+xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
+title('AO Loop Convergence (Logarithmic Scale)');
+grid on;
+
+%%
+
+figure;
+subplot(2,1,1);
+imshow(WFSHistory);
 % xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
 % title('AO Loop Convergence (Linear Scale)');
-% grid on;
+grid on;
 % subplot(2,1,2);
 % semilogy(rwfe_waves_history, 'o-');
 % xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
 % title('AO Loop Convergence (Logarithmic Scale)');
 % grid on;
 
+%%
 
-% figure;
-% imagesc(cam,'parent',subplot(2,2,1));
-% title('Long Exposure PSF', 'FontSize', 12, 'FontWeight', 'bold');
-% colorbar; axis image;
-% imagesc(instantCam,'parent',subplot(2,2,2));
-% title('Instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
-% colorbar; axis image;
-% imagesc(psf_sum,'parent',subplot(2,2,3));
-% title('Long psf from instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
-% colorbar; axis image;
-% imagesc(cam.frame-psf_sum,'parent',subplot(2,2,4));
-% title('Long psf - iPsfSum', 'FontSize', 12, 'FontWeight', 'bold');
-% colorbar; axis image;
-% sgtitle(sprintf('AO Strehl: Long=%.2f, Instant=%.2f', cam.strehl, instantCam.strehl));
+figure;
+imagesc(cam,'parent',subplot(2,2,1));
+title('Long Exposure PSF', 'FontSize', 12, 'FontWeight', 'bold');
+colorbar; axis image;
+imagesc(instantCam,'parent',subplot(2,2,2));
+title('Instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
+colorbar; axis image;
+imagesc(psf_sum,'parent',subplot(2,2,3));
+title('Long psf from instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
+colorbar; axis image;
+imagesc(cam.frame-psf_sum,'parent',subplot(2,2,4));
+title('Long psf - iPsfSum', 'FontSize', 12, 'FontWeight', 'bold');
+colorbar; axis image;
+sgtitle(sprintf('AO Strehl: Long=%.2f, Instant=%.2f', cam.strehl, instantCam.strehl));
 
 
-% psf_sum_flux = sum(psf_sum(:));
-% long_psf_flux = sum(cam.frame(:));
+psf_sum_flux = sum(psf_sum(:));
+long_psf_flux = sum(cam.frame(:));
 
-% fprintf('Flux in long exposure PSF: %.2e\n', long_psf_flux);
-% fprintf('Flux in sum of instantaneous PSFs: %.2e\n', psf_sum_flux);
+fprintf('Flux in long exposure PSF: %.2e\n', long_psf_flux);
+fprintf('Flux in sum of instantaneous PSFs: %.2e\n', psf_sum_flux);
 
-% flux_ratio = psf_sum_flux / long_psf_flux;
-% fprintf('Flux ratio (iPsfSum / Long PSF): %.3f\n', flux_ratio);
+flux_ratio = psf_sum_flux / long_psf_flux;
+fprintf('Flux ratio (iPsfSum / Long PSF): %.3f\n', flux_ratio);
 
+%% flush
 
 clear WFHistory WFSHistory lightfieldHistory dmCommandsHistory psfHistory rwfe_history
