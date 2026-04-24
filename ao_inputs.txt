@@ -9,28 +9,32 @@ wind         = [0.03]      # [m/s] (array of double) Wind speed(s), nominal = 0.
 windDir      = [355/113]  # [rad] (array of double)Wind direction(s)
 
 # Telescope / WFS geometry
-oversampling = 1             # [-] (uint) Number of lenslet per actuators in 1 dimention.
+oversampling = 4             # [-] (uint) Number of lenslet per actuators in 1 dimention.
 nAct         = 9            # [-] (uint)Number of actuators across pupil (including outside)
 nPx          = 17            # [-] (uint)Pixels per lenslet
 D            = 0.0175        # [m] (double) Telescope diameter
 
 # Timing
 samplingFreq = 500            # [Hz] (double) AO loop sampling frequency
-samplingFreq = 500            # [Hz] (double) AO loop sampling frequency
 
 # Data storage
 chunksize    = 1000e6         # [B] (double) Max RAM size per data for batch saving
-exposureTime = 100         # [iterations] Long exposure duration
-startDelay   = 20            # [iterations] AO loop startup delay
+exposureTime = 1500         # [iterations] Long exposure duration
+startDelay   = 50            # [iterations] AO loop startup delay
 gain_cl      = 0.5           # [-] Integrator gain
-SH_ill_thresh = 0.5 # [-] Lenslet illumination threshold to be consitered
 
-# cameras
+# WFS camera
 photonNoise  = false
 readOutNoise = 0
 
-# Saving
-SAVEWF       = false
+# Log
+SAVEWF          = false
+SAVESLOPES      = false
+SAVELIGHTFIELD  = false
+SAVEDM          = true
+SAVEPSF         = false
+SAVERWFE        = true
+SAVEDIFFLIMITED = false
 
 # Output file prefixes
 fileID_WF           = output/ao_WF_
