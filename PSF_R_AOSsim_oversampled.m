@@ -25,6 +25,10 @@ chunksize    = cfg.chunksize;
 exposureTime = cfg.exposureTime;
 startDelay   = cfg.startDelay;
 gain_cl      = cfg.gain_cl;
+SH_ill_thresh = cfg.SH_ill_thresh;
+photonNoise = cfg.photonNoise;
+readOutNoise = cfg.readOutNoise;
+
 SAVEWF       = cfg.SAVEWF;
 SAVESLOPES      = cfg.SAVESLOPES
 SAVELIGHTFIELD  = cfg.SAVELIGHTFIELD
@@ -43,13 +47,12 @@ fileID_diff_limited = cfg.fileID_diff_limited;
 fileID_metadata     = cfg.fileID_metadata;
 
 
-
 ngs = source;
 
 
 atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',Asl,'windSpeed',wind,'windDirection',windDir);
 tel = telescope(D,'resolution',nRes,'fieldOfViewInArcsec',30,'samplingTime',1/samplingFreq);
-wfs = shackHartmann(nL,nRes,0.50);
+wfs = shackHartmann(nL,nRes,SH_ill_thresh);
 
 ngs = ngs.*tel*wfs;
 
@@ -91,7 +94,14 @@ wfs.pointingDirection = [];
 
 
 bifa = influenceFunction('monotonic',0.75);
-dm = deformableMirror(nAct+2,'modes',bifa, 'resolution',tel.resolution);
+act_tot = nAct + 2;
+dm = deformableMirror(act_tot,'modes',bifa, 'resolution',tel.resolution);
+[x, y] = meshgrid(1:act_tot, 1:act_tot);
+c = (act_tot + 1) / 2;
+r = act_tot / 2;
+
+DM_MASK = double((x - c).^2 + (y - c).^2 <= r^2);
+
 % dm = deformableMirror(nAct,'modes',bifa, 'resolution',tel.resolution, 'validActuator', wfs.validActuator);
 
 calibDm = calibration(dm,wfs,ngs,ngs.wavelength/40);
@@ -100,16 +110,27 @@ calibDm = calibration(dm,wfs,ngs,ngs.wavelength/40);
 wfs.camera.frameListener.Enabled = false;
 wfs.slopesListener.Enabled = false;
 
+wsf.camera.photonNoise = photonNoise
+wsf.camera.readOutNoise = readOutNoise
+
 ngs = ngs.*tel;
 
 tel = tel + atm;
 % figure
 % imagesc(tel)
+
 ngs = ngs.*tel*wfs;
 
 %% Diffraction limited performance
 cam = imager();
 instantCam = imager();
+
+camera.photonNoise = photonNoise;
+cam.readOutNoise = readOutNoise
+
+instantCam.photonNoise = photonNoise;
+instantCam.readOutNoise = readOutNoise
+
 
 ngs = source('zenith',0,'azimuth',0,'magnitude',8);     % AO source
 ngs.log.verbose = false;
@@ -149,7 +170,6 @@ ngs = ngs.*tel*dm*wfs;
 
 %% Regulation settings
 
-% TODO: put these into a txt file for input
 cam.clockRate    = 1;
 instantCam.clockRate    = 1;
 cam.exposureTime = exposureTime;
@@ -206,7 +226,6 @@ rwfe_waves_history = zeros(batchItSize,1);
 
 
 %% Regulation
-% gain_cl = .9;
 flush(cam)
 flush(instantCam)
 
@@ -224,8 +243,8 @@ for k=1:nIteration
     +instantScience;
     % Closed-loop controller
     dm.coefs = dm.coefs - gain_cl*calibDm.M*wfs.slopes;
-    dm.coefs = min(max(dm.coefs, -1), 1);
-    % local log
+    dm.coefs = min(max(dm.coefs, -1), 1).*DM_MASK;
+        % local log
     if SAVEWF
         WFHistory(:,:,indexInBatch) = ngs.meanRmPhase;
     end
