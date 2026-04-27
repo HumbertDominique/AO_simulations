@@ -9,17 +9,17 @@ L0           = cfg.L0;
 Asl          = cfg.Asl;
 wind         = cfg.wind;
 windDir      = cfg.windDir;
-nAct         = cfg.nAct;
+nActWSF         = cfg.nActWSF;
 oversampling  = cfg.oversampling;
-if oversampling ~= 1
-    nL = nAct * oversampling;
-else
-    nL           = nAct - 1;
-end
+edge_act     = cfg.edge_act;
+
+nL = nActWSF * oversampling;
+
 nPx          = cfg.nPx;
 nRes         = nL * nPx;
 D            = cfg.D;
 d            = D / nL;
+
 samplingFreq = cfg.samplingFreq;
 chunksize    = cfg.chunksize;
 exposureTime = cfg.exposureTime;
@@ -30,13 +30,14 @@ photonNoise = cfg.photonNoise;
 readOutNoise = cfg.readOutNoise;
 
 SAVEWF       = cfg.SAVEWF;
-SAVESLOPES      = cfg.SAVESLOPES
-SAVELIGHTFIELD  = cfg.SAVELIGHTFIELD
-SAVEDM          = cfg.SAVEDM
-SAVEPSF         = cfg.SAVEPSF
-SAVERWFE        = cfg.SAVERWFE
-SAVEDIFFLIMITED = cfg.SAVEDIFFLIMITED
+SAVESLOPES      = cfg.SAVESLOPES;
+SAVELIGHTFIELD  = cfg.SAVELIGHTFIELD;
+SAVEDM          = cfg.SAVEDM;
+SAVEPSF         = cfg.SAVEPSF;
+SAVERWFE        = cfg.SAVERWFE;
+SAVEDIFFLIMITED = cfg.SAVEDIFFLIMITED;
 
+outputDir           = cfg.outputDir;
 fileID_WF           = cfg.fileID_WF;
 fileID_WFS          = cfg.fileID_WFS;
 fileID_lightfield   = cfg.fileID_lightfield;
@@ -49,13 +50,12 @@ fileID_metadata     = cfg.fileID_metadata;
 
 ngs = source;
 
-
 atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',Asl,'windSpeed',wind,'windDirection',windDir);
 tel = telescope(D,'resolution',nRes,'fieldOfViewInArcsec',30,'samplingTime',1/samplingFreq);
+
 wfs = shackHartmann(nL,nRes,SH_ill_thresh);
 
 ngs = ngs.*tel*wfs;
-
 wfs.INIT
 
 +wfs;
@@ -94,24 +94,25 @@ wfs.pointingDirection = [];
 
 
 bifa = influenceFunction('monotonic',0.75);
-act_tot = nAct + 2;
+act_tot = 11%nActWSF + 2*edge_act;
 dm = deformableMirror(act_tot,'modes',bifa, 'resolution',tel.resolution);
+calibDm = calibration(dm,wfs,ngs,ngs.wavelength);
+
+
+% Create a circular mask for the DM actuators to only allow the central actuators to be active.
 [x, y] = meshgrid(1:act_tot, 1:act_tot);
 c = (act_tot + 1) / 2;
 r = act_tot / 2;
-
 DM_MASK = double((x - c).^2 + (y - c).^2 <= r^2);
+DM_MASK = reshape(DM_MASK, [], 1);
 
-% dm = deformableMirror(nAct,'modes',bifa, 'resolution',tel.resolution, 'validActuator', wfs.validActuator);
-
-calibDm = calibration(dm,wfs,ngs,ngs.wavelength/40);
 
 
 wfs.camera.frameListener.Enabled = false;
 wfs.slopesListener.Enabled = false;
 
-wsf.camera.photonNoise = photonNoise
-wsf.camera.readOutNoise = readOutNoise
+wsf.camera.photonNoise = photonNoise;
+wsf.camera.readOutNoise = readOutNoise;
 
 ngs = ngs.*tel;
 
@@ -126,17 +127,17 @@ cam = imager();
 instantCam = imager();
 
 camera.photonNoise = photonNoise;
-cam.readOutNoise = readOutNoise
+cam.readOutNoise = readOutNoise;
 
 instantCam.photonNoise = photonNoise;
-instantCam.readOutNoise = readOutNoise
+instantCam.readOutNoise = readOutNoise;
 
 
 ngs = source('zenith',0,'azimuth',0,'magnitude',8);     % AO source
 ngs.log.verbose = false;
 science = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',8);    % long psf source, Magniture is arbitrary
 science.log.verbose = false;
-instantScience = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',8); %instantaneous psf source. could be the same as the long one.
+instantScience = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',8); % instantaneous psf source. could be the same as the long one.
 instantScience.log.verbose = false;
 tel = tel - atm;
 
@@ -191,50 +192,52 @@ fprintf('Batch size [iterations]: %d\n', batchItSize);
 fprintf('Last batch size [iterations]: %d\n', LastBatchItSize);
 fprintf('----------------------------------------------------------------\n');
 
+if ~exist(outputDir, 'dir')
+    mkdir(outputDir);
+end
 
 for i = 1 : batchItSize
     if SAVEWF
-         if exist(fileID_WF+string(i)+".h5", 'file'), delete(fileID_WF+string(i)+".h5"); end
+         if exist(outputDir+"\"+fileID_WF+string(i)+".h5", 'file'), delete(outputDir+"\"+fileID_WF+string(i)+".h5"); end
+        WFHistory = zeros(size(ngs.meanRmPhase,1),size(ngs.meanRmPhase,2),batchItSize);
     end
     if SAVESLOPES
-        if exist(fileID_WFS+string(i)+".h5", 'file'), delete(fileID_WFS+string(i)+".h5"); end
+        if exist(outputDir+"\"+fileID_WFS+string(i)+".h5", 'file'), delete(outputDir+"\"+fileID_WFS+string(i)+".h5"); end
+        WFSHistory = zeros(length(wfs.slopes),batchItSize);
     end
     if SAVEDM
-        if exist(fileID_DM+string(i)+".h5", 'file'), delete(fileID_DM+string(i)+".h5"); end
+        if exist(outputDir+"\"+fileID_DM+string(i)+".h5", 'file'), delete(outputDir+"\"+fileID_DM+string(i)+".h5"); end
+        dmCommandsHistory = zeros(length(dm.coefs),batchItSize);
     end
     if SAVELIGHTFIELD
-        if exist(fileID_lightfield+string(i)+".h5", 'file'), delete(fileID_lightfield+string(i)+".h5"); end
+        if exist(outputDir+"\"+fileID_lightfield+string(i)+".h5", 'file'), delete(outputDir+"\"+fileID_lightfield+string(i)+".h5"); end
+        lightfieldHistory = zeros(size(wfs.camera.frame, 1), size(wfs.camera.frame, 2),batchItSize, 'uint8');
     end
     if SAVEPSF
-        if exist(fileID_psf+string(i)+".h5", 'file'), delete(fileID_psf+string(i)+".h5"); end
+        if exist(outputDir+"\"+fileID_psf+string(i)+".h5", 'file'), delete(outputDir+"\"+fileID_psf+string(i)+".h5"); end
+        psfHistory = zeros(size(instantCam.frame, 1), size(instantCam.frame, 2),batchItSize, 'uint8');
     end
     if SAVERWFE
-        if exist(fileID_rwfe+string(i)+".h5", 'file'), delete(fileID_rwfe+string(i)+".h5"); end
+        if exist(outputDir+"\"+fileID_rwfe+string(i)+".h5", 'file'), delete(outputDir+"\"+fileID_rwfe+string(i)+".h5"); end
+        % rwfe_waves_history = zeros(batchItSize,1);
     end
     if SAVEDIFFLIMITED
-        if exist(fileID_diff_limited+string(i)+".h5", 'file'), delete(fileID_diff_limited+string(i)+".h5"); end
+        if exist(outputDir+"\"+fileID_diff_limited+string(i)+".h5", 'file'), delete(outputDir+"\"+fileID_diff_limited+string(i)+".h5"); end
+        diff_limited = zeros(size(cam.frame));
     end
-    end
-if exist(fileID_metadata+".txt", 'file'), delete(fileID_metadata+".txt"); end
+end
+if exist(outputDir+"\"+fileID_metadata+".txt", 'file'), delete(outputDir+"\"+fileID_metadata+".txt"); end
 
-% WFHistory = zeros(size(ngs.meanRmPhase,1),size(ngs.meanRmPhase,2),batchItSize);
-WFSHistory = zeros(length(wfs.slopes),batchItSize);
-lightfieldHistory = zeros(size(wfs.camera.frame, 1), size(wfs.camera.frame, 2),batchItSize, 'uint8');
-dmCommandsHistory = zeros(length(dm.coefs),batchItSize);
-psfHistory = zeros(size(instantCam.frame, 1), size(instantCam.frame, 2),batchItSize, 'uint8');
 rwfe_waves_history = zeros(batchItSize,1);
-
 
 %% Regulation
 flush(cam)
 flush(instantCam)
 
 indexInBatch = 0;
-
 for k=1:nIteration
     indexInBatch = indexInBatch + 1;
     % Objects update
-    % flush(instantCam)
     instantCam.frame = [];
     instantCam.frameCount = 0;
     +tel;
@@ -244,6 +247,7 @@ for k=1:nIteration
     % Closed-loop controller
     dm.coefs = dm.coefs - gain_cl*calibDm.M*wfs.slopes;
     dm.coefs = min(max(dm.coefs, -1), 1).*DM_MASK;
+    fprintf('RWFE at iteration %d: %f waves\n', k, sqrt(var(ngs))./2/pi);
         % local log
     if SAVEWF
         WFHistory(:,:,indexInBatch) = ngs.meanRmPhase;
@@ -273,39 +277,39 @@ for k=1:nIteration
 
         if SAVEWF
             sz = size(WFHistory);
-            h5create(fileID_WF+string(batchIndex)+".h5", '/wf', sz, 'ChunkSize', [sz(1) sz(2) 1], 'DataType', 'double');
-            h5write(fileID_WF+string(batchIndex)+".h5", '/wf', WFHistory);
+            h5create(outputDir+"\"+fileID_WF+string(batchIndex)+".h5", '/wf', sz, 'ChunkSize', [sz(1) sz(2) 1], 'DataType', 'double');
+            h5write(outputDir+"\"+fileID_WF+string(batchIndex)+".h5", '/wf', WFHistory);
         end
         if SAVEWF
             sz = size(WFSHistory);
-            h5create(fileID_WFS+string(batchIndex)+".h5", '/wfs', sz, 'ChunkSize', [sz(1) 1], 'DataType', 'double');
-            h5write(fileID_WFS+string(batchIndex)+".h5", '/wfs', WFSHistory);
+            h5create(outputDir+"\"+fileID_WFS+string(batchIndex)+".h5", '/wfs', sz, 'ChunkSize', [sz(1) 1], 'DataType', 'double');
+            h5write(outputDir+"\"+fileID_WFS+string(batchIndex)+".h5", '/wfs', WFSHistory);
             WFSHistory = zeros(length(wfs.slopes),batchItSize);
         end
         if SAVELIGHTFIELD
             sz = size(lightfieldHistory);
             totBytes = prod(sz);   % for uint8, this is roughly the expected file size
             fprintf('Dataset size: [%d,%d,%d] -> %d bytes\n', sz, totBytes);
-            h5create(fileID_lightfield+string(batchIndex)+".h5", '/wf_lightfield', sz, 'ChunkSize', [sz(1) sz(2) 1],'DataType', 'uint8');
-            h5write(fileID_lightfield+string(batchIndex)+".h5", '/wf_lightfield', lightfieldHistory);
+            h5create(outputDir+"\"+fileID_lightfield+string(batchIndex)+".h5", '/wf_lightfield', sz, 'ChunkSize', [sz(1) sz(2) 1],'DataType', 'uint8');
+            h5write(outputDir+"\"+fileID_lightfield+string(batchIndex)+".h5", '/wf_lightfield', lightfieldHistory);
             lightfieldHistory = zeros(size(wfs.camera.frame, 1), size(wfs.camera.frame, 2),batchItSize);
         end
         if SAVEDM
             sz = size(dmCommandsHistory);
-            h5create(fileID_DM+string(batchIndex)+".h5", '/dm_commands', sz, 'ChunkSize', [sz(1) 1], 'DataType', 'double');
-            h5write(fileID_DM+string(batchIndex)+".h5", '/dm_commands', dmCommandsHistory);
+            h5create(outputDir+"\"+fileID_DM+string(batchIndex)+".h5", '/dm_commands', sz, 'ChunkSize', [sz(1) 1], 'DataType', 'double');
+            h5write(outputDir+"\"+fileID_DM+string(batchIndex)+".h5", '/dm_commands', dmCommandsHistory);
             dmCommandsHistory = zeros(length(dm.coefs),batchItSize);
         end
         if SAVEPSF
             sz = size(psfHistory);
-            h5create(fileID_psf+string(batchIndex)+".h5", '/psf_history', sz, 'ChunkSize', [sz(1) sz(2) 1], 'DataType', 'uint8');
-            h5write(fileID_psf+string(batchIndex)+".h5", '/psf_history', psfHistory);
+            h5create(outputDir+"\"+fileID_psf+string(batchIndex)+".h5", '/psf_history', sz, 'ChunkSize', [sz(1) sz(2) 1], 'DataType', 'uint8');
+            h5write(outputDir+"\"+fileID_psf+string(batchIndex)+".h5", '/psf_history', psfHistory);
             psfHistory = zeros(size(instantCam.frame, 1), size(instantCam.frame, 2),batchItSize);
         end
         if SAVERWFE
             sz = size(rwfe_waves_history);
-            h5create(fileID_rwfe+string(batchIndex)+".h5", '/rwfe_waves_history', sz, 'ChunkSize', [sz(1) 1], 'DataType', 'double');
-            h5write(fileID_rwfe+string(batchIndex)+".h5", '/rwfe_waves_history', rwfe_waves_history);
+            h5create(outputDir+"\"+fileID_rwfe+string(batchIndex)+".h5", '/rwfe_waves_history', sz, 'ChunkSize', [sz(1) 1], 'DataType', 'double');
+            h5write(outputDir+"\"+fileID_rwfe+string(batchIndex)+".h5", '/rwfe_waves_history', rwfe_waves_history);
             rwfe_waves_history = zeros(batchItSize,1);
         end
         indexInBatch = 0;
@@ -314,14 +318,14 @@ end
 %%
 if SAVEDIFFLIMITED
     sz = size(diff_limited);
-    h5create(fileID_diff_limited+".h5", '/diff_limited', sz, 'ChunkSize', [sz(1) 1]);
-    h5write(fileID_diff_limited+".h5", '/diff_limited', diff_limited);
+    h5create(outputDir+"\"+fileID_diff_limited+".h5", '/diff_limited', sz, 'ChunkSize', [sz(1) 1]);
+    h5write(outputDir+"\"+fileID_diff_limited+".h5", '/diff_limited', diff_limited);
 end
 %%
-rowNames = {'D';'r0';'L0';'Asl';'wind';'windDir';'Exposure time';'nIteration';'gain_cl';'batchItSize';'nBatch';'LastBatchItSize'};
-values =    [D;  r0;  L0;  Asl;  wind;  windDir;  exposureTime;   nIteration;  gain_cl;  batchItSize;  nBatch;  LastBatchItSize];
+rowNames = {'D';'r0';'L0';'Asl';'wind';'windDir';'Exposure time';'nIteration';'gain_cl';'batchItSize';'nBatch';'LastBatchItSize'; 'oversampling'; 'nActWSF';'edge_act'};
+values =    [D;  r0;  L0;  Asl;  wind;  windDir;  exposureTime;   nIteration;  gain_cl;  batchItSize;  nBatch;  LastBatchItSize; oversampling; nActWSF; edge_act];
 T = table(values,'RowNames',rowNames);
-writetable(T,fileID_metadata+".txt",'Delimiter','\t','WriteRowNames',true);
+writetable(T,outputDir+"\"+fileID_metadata+".txt",'Delimiter','\t','WriteRowNames',true);
 
 %% s
 % maxValue = max(psfHistory, [], 'all');
@@ -331,7 +335,7 @@ writetable(T,fileID_metadata+".txt",'Delimiter','\t','WriteRowNames',true);
 
 % figure;
 % imshow(psfHistory(:,:,21), []);
-% %%
+%%
 % psf_sum = sum(psfHistory(:,:,startDelay+1:end), 3);   
 
 % fprintf('Strehl ratio: %4.1f\n',cam.strehl);
@@ -376,4 +380,11 @@ writetable(T,fileID_metadata+".txt",'Delimiter','\t','WriteRowNames',true);
 % fprintf('Flux ratio (iPsfSum / Long PSF): %.3f\n', flux_ratio);
 
 
-clear WFHistory WFSHistory lightfieldHistory dmCommandsHistory psfHistory rwfe_history
+%% clear
+
+% if exist('WFHistory', 'var'), clear WFHistory; end
+% if exist('WFSHistory', 'var'), clear WFSHistory; end
+% if exist('lightfieldHistory', 'var'), clear lightfieldHistory; end
+% if exist('dmCommandsHistory', 'var'), clear dmCommandsHistory; end
+% if exist('psfHistory', 'var'), clear psfHistory; end
+% if exist('rwfe_waves_history', 'var'), clear rwfe_waves_history; end

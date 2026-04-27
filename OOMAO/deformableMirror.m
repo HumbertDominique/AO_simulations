@@ -132,7 +132,7 @@ classdef deformableMirror < handle
                 
             end
             obj.log = logBook.checkIn(obj);
-            display(obj)
+            % display(obj)
         end
         
         %% Destructor

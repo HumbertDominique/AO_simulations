@@ -9,23 +9,38 @@ L0           = cfg.L0;
 Asl          = cfg.Asl;
 wind         = cfg.wind;
 windDir      = cfg.windDir;
-nAct         = cfg.nAct;
+nActWSF         = cfg.nActWSF;
 oversampling  = cfg.oversampling;
+edge_act     = cfg.edge_act;
+
 if oversampling ~= 1
-    nAct = nAct * oversampling;
+    nL = nActWSF * oversampling;
 else
-    nL           = nAct - 1;
+    nL           = nActWSF - 1;
 end
 nPx          = cfg.nPx;
 nRes         = nL * nPx;
 D            = cfg.D;
 d            = D / nL;
+
 samplingFreq = cfg.samplingFreq;
 chunksize    = cfg.chunksize;
 exposureTime = cfg.exposureTime;
 startDelay   = cfg.startDelay;
 gain_cl      = cfg.gain_cl;
+SH_ill_thresh = cfg.SH_ill_thresh;
+photonNoise = cfg.photonNoise;
+readOutNoise = cfg.readOutNoise;
+
 SAVEWF       = cfg.SAVEWF;
+SAVESLOPES      = cfg.SAVESLOPES;
+SAVELIGHTFIELD  = cfg.SAVELIGHTFIELD;
+SAVEDM          = cfg.SAVEDM;
+SAVEPSF         = cfg.SAVEPSF;
+SAVERWFE        = cfg.SAVERWFE;
+SAVEDIFFLIMITED = cfg.SAVEDIFFLIMITED;
+
+outputDir           = cfg.outputDir;
 fileID_WF           = cfg.fileID_WF;
 fileID_WFS          = cfg.fileID_WFS;
 fileID_lightfield   = cfg.fileID_lightfield;
@@ -305,22 +320,6 @@ title('AO Loop Convergence (Logarithmic Scale)');
 grid on;
 
 
-figure;
-imagesc(cam,'parent',subplot(2,2,1));
-title('Long Exposure PSF', 'FontSize', 12, 'FontWeight', 'bold');
-colorbar; axis image;
-imagesc(instantCam,'parent',subplot(2,2,2));
-title('Instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
-colorbar; axis image;
-imagesc(psf_sum,'parent',subplot(2,2,3));
-title('Long psf from instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
-colorbar; axis image;
-imagesc(cam.frame-psf_sum,'parent',subplot(2,2,4));
-title('Long psf - iPsfSum', 'FontSize', 12, 'FontWeight', 'bold');
-colorbar; axis image;
-sgtitle(sprintf('AO Strehl: Long=%.2f, Instant=%.2f', cam.strehl, instantCam.strehl));
-
-
 psf_sum_flux = sum(psf_sum(:));
 long_psf_flux = sum(cam.frame(:));
 
@@ -331,4 +330,4 @@ flux_ratio = psf_sum_flux / long_psf_flux;
 fprintf('Flux ratio (iPsfSum / Long PSF): %.3f\n', flux_ratio);
 
 
-clear WFHistory WFSHistory lightfieldHistory dmCommandsHistory psfHistory rwfe_history
+% clear WFHistory WFSHistory lightfieldHistory dmCommandsHistory psfHistory rwfe_history
