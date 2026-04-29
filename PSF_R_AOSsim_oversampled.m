@@ -19,6 +19,7 @@ nPx          = cfg.nPx;
 nRes         = nL * nPx;
 D            = cfg.D;
 d            = D / nL;
+dmStroke     = cfg.dmStroke;
 
 samplingFreq = cfg.samplingFreq;
 chunksize    = cfg.chunksize;
@@ -47,6 +48,7 @@ fileID_rwfe         = cfg.fileID_rwfe;
 fileID_diff_limited = cfg.fileID_diff_limited;
 fileID_metadata     = cfg.fileID_metadata;
 
+%% code
 
 ngs = source;
 
@@ -83,36 +85,36 @@ end
 warning('on','oomao:shackHartmann:relay')
 Ox_in  = u*tipStep*constants.radian2arcsec;
 Ox_out = sx*ngs.wavelength/d/2*constants.radian2arcsec;
+
 %figure
 %plot(Ox_in,Ox_out)
 %grid
+
 slopesLinCoef = polyfit(Ox_in,Ox_out,1);
 wfs.slopesUnits = 1/slopesLinCoef(1);
 ngs.zenith = 0;
 wfs.pointingDirection = [];
 %
 
+% display wfs.validActuator
+
 
 bifa = influenceFunction('monotonic',0.75);
-act_tot = 11%nActWSF + 2*edge_act;
-dm = deformableMirror(act_tot,'modes',bifa, 'resolution',tel.resolution);
-calibDm = calibration(dm,wfs,ngs,ngs.wavelength);
-
-
+act_tot = nActWSF + 2*edge_act;
 % Create a circular mask for the DM actuators to only allow the central actuators to be active.
 [x, y] = meshgrid(1:act_tot, 1:act_tot);
 c = (act_tot + 1) / 2;
 r = act_tot / 2;
-DM_MASK = double((x - c).^2 + (y - c).^2 <= r^2);
-DM_MASK = reshape(DM_MASK, [], 1);
+DM_MASK = (x - c).^2 + (y - c).^2 <= r^2;
 
-
+dm = deformableMirror(act_tot,'modes',bifa, 'resolution',tel.resolution, 'validActuator', DM_MASK); % valid actuators is used to ensure proper calibration matrix
+calibDm = calibration(dm,wfs,ngs,ngs.wavelength/dmStroke);
 
 wfs.camera.frameListener.Enabled = false;
 wfs.slopesListener.Enabled = false;
 
-wsf.camera.photonNoise = photonNoise;
-wsf.camera.readOutNoise = readOutNoise;
+wfs.camera.photonNoise = photonNoise;
+wfs.camera.readOutNoise = readOutNoise;
 
 ngs = ngs.*tel;
 
@@ -246,7 +248,7 @@ for k=1:nIteration
     +instantScience;
     % Closed-loop controller
     dm.coefs = dm.coefs - gain_cl*calibDm.M*wfs.slopes;
-    dm.coefs = min(max(dm.coefs, -1), 1).*DM_MASK;
+    dm.coefs = min(max(dm.coefs, -1), 1);
     fprintf('RWFE at iteration %d: %f waves\n', k, sqrt(var(ngs))./2/pi);
         % local log
     if SAVEWF
@@ -382,9 +384,9 @@ writetable(T,outputDir+"\"+fileID_metadata+".txt",'Delimiter','\t','WriteRowName
 
 %% clear
 
-% if exist('WFHistory', 'var'), clear WFHistory; end
-% if exist('WFSHistory', 'var'), clear WFSHistory; end
-% if exist('lightfieldHistory', 'var'), clear lightfieldHistory; end
-% if exist('dmCommandsHistory', 'var'), clear dmCommandsHistory; end
-% if exist('psfHistory', 'var'), clear psfHistory; end
-% if exist('rwfe_waves_history', 'var'), clear rwfe_waves_history; end
+if exist('WFHistory', 'var'), clear WFHistory; end
+if exist('WFSHistory', 'var'), clear WFSHistory; end
+if exist('lightfieldHistory', 'var'), clear lightfieldHistory; end
+if exist('dmCommandsHistory', 'var'), clear dmCommandsHistory; end
+if exist('psfHistory', 'var'), clear psfHistory; end
+if exist('rwfe_waves_history', 'var'), clear rwfe_waves_history; end
