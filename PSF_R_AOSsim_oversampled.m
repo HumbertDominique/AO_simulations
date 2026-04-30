@@ -282,7 +282,7 @@ for k=1:nIteration
             h5create(outputDir+"\"+fileID_WF+string(batchIndex)+".h5", '/wf', sz, 'ChunkSize', [sz(1) sz(2) 1], 'DataType', 'double');
             h5write(outputDir+"\"+fileID_WF+string(batchIndex)+".h5", '/wf', WFHistory);
         end
-        if SAVEWF
+        if SAVEWFS
             sz = size(WFSHistory);
             h5create(outputDir+"\"+fileID_WFS+string(batchIndex)+".h5", '/wfs', sz, 'ChunkSize', [sz(1) 1], 'DataType', 'double');
             h5write(outputDir+"\"+fileID_WFS+string(batchIndex)+".h5", '/wfs', WFSHistory);
