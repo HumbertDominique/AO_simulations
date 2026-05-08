@@ -53,7 +53,7 @@ fileID_metadata     = cfg.fileID_metadata;
 ngs = source;
 
 atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',Asl,'windSpeed',wind,'windDirection',windDir);
-tel = telescope(D,'resolution',nRes,'fieldOfViewInArcsec',30,'samplingTime',1/samplingFreq);
+tel = telescope(D,'resolution',nRes,'fieldOfViewInArcsec',3,'samplingTime',1/samplingFreq);
 
 wfs = shackHartmann(nL,nRes,SH_ill_thresh);
 
@@ -99,16 +99,16 @@ wfs.pointingDirection = [];
 % display wfs.validActuator
 
 
-bifa = influenceFunction('monotonic',0.75);
+bifa = influenceFunction('monotonic',0.47);
 act_tot = nActWSF + 2*edge_act;
-% Create a circular mask for the DM actuators to only allow the central actuators to be active.
+% Create a circular mask for the DM actuators to only allow the pupil+1 actuators to be active.
 [x, y] = meshgrid(1:act_tot, 1:act_tot);
 c = (act_tot + 1) / 2;
 r = act_tot / 2;
 DM_MASK = (x - c).^2 + (y - c).^2 <= r^2;
 
 dm = deformableMirror(act_tot,'modes',bifa, 'resolution',tel.resolution, 'validActuator', DM_MASK); % valid actuators is used to ensure proper calibration matrix
-calibDm = calibration(dm,wfs,ngs,ngs.wavelength/dmStroke);
+calibDm = calibration(dm,wfs,ngs,dmStroke);
 
 wfs.camera.frameListener.Enabled = false;
 wfs.slopesListener.Enabled = false;
@@ -123,6 +123,14 @@ tel = tel + atm;
 % imagesc(tel)
 
 ngs = ngs.*tel*wfs;
+
+%% temp
+
+% figure;
+% imagesc(dm.validActuator);
+% axis square tight;
+% title('validActuator: true=inside pupil, false=outside pupil');
+% colorbar;
 
 %% Diffraction limited performance
 cam = imager();
@@ -282,7 +290,7 @@ for k=1:nIteration
             h5create(outputDir+"\"+fileID_WF+string(batchIndex)+".h5", '/wf', sz, 'ChunkSize', [sz(1) sz(2) 1], 'DataType', 'double');
             h5write(outputDir+"\"+fileID_WF+string(batchIndex)+".h5", '/wf', WFHistory);
         end
-        if SAVEWFS
+        if SAVESLOPES
             sz = size(WFSHistory);
             h5create(outputDir+"\"+fileID_WFS+string(batchIndex)+".h5", '/wfs', sz, 'ChunkSize', [sz(1) 1], 'DataType', 'double');
             h5write(outputDir+"\"+fileID_WFS+string(batchIndex)+".h5", '/wfs', WFSHistory);
@@ -324,8 +332,8 @@ if SAVEDIFFLIMITED
     h5write(outputDir+"\"+fileID_diff_limited+".h5", '/diff_limited', diff_limited);
 end
 %%
-rowNames = {'D';'r0';'L0';'Asl';'wind';'windDir';'Exposure time';'nIteration';'gain_cl';'batchItSize';'nBatch';'LastBatchItSize'; 'oversampling'; 'nActWSF';'edge_act'};
-values =    [D;  r0;  L0;  Asl;  wind;  windDir;  exposureTime;   nIteration;  gain_cl;  batchItSize;  nBatch;  LastBatchItSize; oversampling; nActWSF; edge_act];
+rowNames = {'D';'r0';'L0';'Asl';'wind';'windDir';'Exposure time';'nIteration';'gain_cl';'batchItSize';'nBatch';'LastBatchItSize'; 'oversampling'; 'nActWSF';'edge_act'; 'startDelay'};
+values =    [D;  r0;  L0;  Asl;  wind;  windDir;  exposureTime;   nIteration;  gain_cl;  batchItSize;  nBatch;  LastBatchItSize; oversampling; nActWSF; edge_act; startDelay];
 T = table(values,'RowNames',rowNames);
 writetable(T,outputDir+"\"+fileID_metadata+".txt",'Delimiter','\t','WriteRowNames',true);
 
