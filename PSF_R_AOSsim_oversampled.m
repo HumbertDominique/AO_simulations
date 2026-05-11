@@ -108,7 +108,7 @@ r = act_tot / 2;
 DM_MASK = (x - c).^2 + (y - c).^2 <= r^2;
 
 dm = deformableMirror(act_tot,'modes',bifa, 'resolution',tel.resolution, 'validActuator', DM_MASK); % valid actuators is used to ensure proper calibration matrix
-calibDm = calibration(dm,wfs,ngs,ngs.wavelength/dmStroke);
+calibDm = calibration(dm,wfs,ngs,dmStroke);
 
 wfs.camera.frameListener.Enabled = false;
 wfs.slopesListener.Enabled = false;
@@ -282,7 +282,7 @@ for k=1:nIteration
             h5create(outputDir+"\"+fileID_WF+string(batchIndex)+".h5", '/wf', sz, 'ChunkSize', [sz(1) sz(2) 1], 'DataType', 'double');
             h5write(outputDir+"\"+fileID_WF+string(batchIndex)+".h5", '/wf', WFHistory);
         end
-        if SAVEWFS
+        if SAVESLOPES
             sz = size(WFSHistory);
             h5create(outputDir+"\"+fileID_WFS+string(batchIndex)+".h5", '/wfs', sz, 'ChunkSize', [sz(1) 1], 'DataType', 'double');
             h5write(outputDir+"\"+fileID_WFS+string(batchIndex)+".h5", '/wfs', WFSHistory);
