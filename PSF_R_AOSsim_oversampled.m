@@ -13,6 +13,8 @@ nActWSF         = cfg.nActWSF;
 oversampling  = cfg.oversampling;
 edge_act     = cfg.edge_act;
 
+LGSmagnitude = cfg.LGSmagnitude;
+
 nL = nActWSF * oversampling;
 
 nPx          = cfg.nPx;
@@ -143,11 +145,11 @@ instantCam.photonNoise = photonNoise;
 instantCam.readOutNoise = readOutNoise;
 
 
-ngs = source('zenith',0,'azimuth',0,'magnitude',8);     % AO source
+ngs = source('zenith',0,'azimuth',0,'magnitude',LGSmagnitude);     % AO source
 ngs.log.verbose = false;
-science = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',8);    % long psf source, Magniture is arbitrary
+science = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',LGSmagnitude);    % long psf source, Magniture is arbitrary
 science.log.verbose = false;
-instantScience = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',8); % instantaneous psf source. could be the same as the long one.
+instantScience = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',LGSmagnitude); % instantaneous psf source. could be the same as the long one.
 instantScience.log.verbose = false;
 tel = tel - atm;
 
