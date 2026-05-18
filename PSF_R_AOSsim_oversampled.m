@@ -1,4 +1,4 @@
-clc
+% clc
 clear all
 close all
 addpath('OOMAO')
@@ -13,7 +13,7 @@ nActWSF         = cfg.nActWSF;
 oversampling  = cfg.oversampling;
 edge_act     = cfg.edge_act;
 
-LGSmagnitude = cfg.LGSmagnitude;
+NGSmagnitude = cfg.NGSmagnitude;
 
 nL = nActWSF * oversampling;
 
@@ -145,11 +145,11 @@ instantCam.photonNoise = photonNoise;
 instantCam.readOutNoise = readOutNoise;
 
 
-ngs = source('zenith',0,'azimuth',0,'magnitude',LGSmagnitude);     % AO source
+ngs = source('zenith',0,'azimuth',0,'magnitude',NGSmagnitude);     % AO source
 ngs.log.verbose = false;
-science = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',LGSmagnitude);    % long psf source, Magniture is arbitrary
+science = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',NGSmagnitude);    % long psf source, Magniture is arbitrary
 science.log.verbose = false;
-instantScience = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',LGSmagnitude); % instantaneous psf source. could be the same as the long one.
+instantScience = source('zenith',0,'azimuth',0,'wavelength',photometry.HeNe,'magnitude',NGSmagnitude); % instantaneous psf source. could be the same as the long one.
 instantScience.log.verbose = false;
 tel = tel - atm;
 
@@ -234,7 +234,7 @@ for i = 1 : batchItSize
         % rwfe_waves_history = zeros(batchItSize,1);
     end
     if SAVEDIFFLIMITED
-        if exist(outputDir+"\"+fileID_diff_limited+string(i)+".h5", 'file'), delete(outputDir+"\"+fileID_diff_limited+string(i)+".h5"); end
+        if exist(outputDir+"\"+fileID_diff_limited+".h5", 'file'), delete(outputDir+"\"+fileID_diff_limited+".h5"); end
         diff_limited = zeros(size(cam.frame));
     end
 end
@@ -259,7 +259,7 @@ for k=1:nIteration
     % Closed-loop controller
     dm.coefs = dm.coefs - gain_cl*calibDm.M*wfs.slopes;
     dm.coefs = min(max(dm.coefs, -1), 1);
-    fprintf('RWFE at iteration %d: %f waves\n', k, sqrt(var(ngs))./2/pi);
+    % fprintf('RWFE at iteration %d: %f waves\n', k, sqrt(var(ngs))./2/pi);
         % local log
     if SAVEWF
         WFHistory(:,:,indexInBatch) = ngs.meanRmPhase;
@@ -301,7 +301,7 @@ for k=1:nIteration
         if SAVELIGHTFIELD
             sz = size(lightfieldHistory);
             totBytes = prod(sz);   % for uint8, this is roughly the expected file size
-            fprintf('Dataset size: [%d,%d,%d] -> %d bytes\n', sz, totBytes);
+            % fprintf('Dataset size: [%d,%d,%d] -> %d bytes\n', sz, totBytes);
             h5create(outputDir+"\"+fileID_lightfield+string(batchIndex)+".h5", '/wf_lightfield', sz, 'ChunkSize', [sz(1) sz(2) 1],'DataType', 'uint8');
             h5write(outputDir+"\"+fileID_lightfield+string(batchIndex)+".h5", '/wf_lightfield', lightfieldHistory);
             lightfieldHistory = zeros(size(wfs.camera.frame, 1), size(wfs.camera.frame, 2),batchItSize);
@@ -334,8 +334,8 @@ if SAVEDIFFLIMITED
     h5write(outputDir+"\"+fileID_diff_limited+".h5", '/diff_limited', diff_limited);
 end
 %%
-rowNames = {'D';'r0';'L0';'Asl';'wind';'windDir';'Exposure time';'nIteration';'gain_cl';'batchItSize';'nBatch';'LastBatchItSize'; 'oversampling'; 'nActWSF';'edge_act'; 'startDelay'};
-values =    [D;  r0;  L0;  Asl;  wind;  windDir;  exposureTime;   nIteration;  gain_cl;  batchItSize;  nBatch;  LastBatchItSize; oversampling; nActWSF; edge_act; startDelay];
+rowNames = {'D';'r0';'L0';'Asl';'wind';'windDir';'Exposure time';'nIteration';'gain_cl';'batchItSize';'nBatch';'LastBatchItSize'; 'oversampling'; 'nActWSF';'edge_act'; 'startDelay'; 'longStrehl'};
+values =    [D;  r0;  L0;  Asl;  wind;  windDir;  exposureTime;   nIteration;  gain_cl;  batchItSize;  nBatch;  LastBatchItSize; oversampling; nActWSF; edge_act; startDelay; cam.strehl];
 T = table(values,'RowNames',rowNames);
 writetable(T,outputDir+"\"+fileID_metadata+".txt",'Delimiter','\t','WriteRowNames',true);
 

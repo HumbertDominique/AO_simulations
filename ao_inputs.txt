@@ -4,46 +4,46 @@
 # Atmosphere
 r0           = 3.75e-3          # [m] (double) Fried parameter
 L0           = 30               # [m] (double) Outer scale
-Asl          = [0.02]           # [m] (array of double)Layer altitude(s); space-separated for multiple layers
-wind         = [0.04]           # [m/s] (array of double) Wind speed(s), nominal = 0.0178
-windDir      = [355/113]        # [rad] (array of double)Wind direction(s)
+Asl          = [0.02]           # [m] (array of double) Layer altitude(s)
+wind         = [0.04]           # [m/s] (array of double) Wind speed(s)
+windDir      = [355/113]        # [rad] (array of double) Wind direction(s)
 
 # LGS
-
-LGSmagnitude = 4                # [m] (double) Laser guide star magnitude
+NGSmagnitude = 5                # [m] (double) Laser guide star magnitude
 
 # DM / WFS geometry
-oversampling = 1                # [-] (uint) Number of lenslet per actuators in 1 dimension.
-nActWSF      = 10               # [-] (uint)Number of actuators across pupil (not including outside). The DM will have nActWSF+2*edge_act actuators on its diameter.
-edge_act     = 0.5              # [-] (uint) Number of actuator on the outside of the pupil in 1 dimension. The DM will have nActWSF+2*edge_act actuators on its diameter.
-nPx          = 27               # [-] (uint)Pixels per lenslet
-D            = 0.0175           # [m] (double) Telescope diameter
-dmStroke     = 10e-9            # [m] (double) dm stroke
+oversampling = 1                # [-] (uint)
+nActWSF      = 10               # [-] (uint)
+edge_act     = 0.5              # [-] (uint)
+nPx          = 27               # [-] (uint)
+D            = 0.0175           # [m] (double)
+dmStroke     = 10e-9            # [m] (double)
+
 # WFS camera
-SH_ill_thresh = 0.005           # [-] (double) illumination threshold of the lenslet in order to consider it as being inside the pupil.
-photonNoise  = false            # [-] (bool) photon noise flag for all detectors
-readOutNoise = 0                # [-] (double) noise for all detectors
+SH_ill_thresh = 0.005           # [-] (double)
+photonNoise  = false            # [-] (bool)
+readOutNoise = 0                # [-] (double)
 
 # Timing
-samplingFreq = 500              # [Hz] (double) AO loop exposure frequency
+samplingFreq = 500              # [Hz] (double)
 
 # Data storage
-chunksize    = 2000e6            # [B] (double) Max RAM size per data for batch saving
-exposureTime = 11000               # [iterations] Long exposure duration
-startDelay   = 100               # [iterations] AO loop startup delay
+chunksize    = 10e6           # [B] (double)
+exposureTime = 5            # [iterations]
+startDelay   = 1              # [iterations]
 gain_cl      = 0.5              # [-] Integrator gain
 
 # Log
 SAVEWF          = false
-SAVESLOPES      = true
-SAVELIGHTFIELD  = true
-SAVEDM          = true
-SAVEPSF         = true
-SAVERWFE        = true
-SAVEDIFFLIMITED = true
+SAVESLOPES      = false
+SAVELIGHTFIELD  = false
+SAVEDM          = false
+SAVEPSF         = false
+SAVERWFE        = false
+SAVEDIFFLIMITED = false
 
 # Output file prefixes
-outputDir           = output
+outputDir           = output\magnitude_5
 fileID_WF           = ao_WF_
 fileID_WFS          = ao_WFS_
 fileID_lightfield   = ao_lightfield_
