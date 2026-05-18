@@ -1,3 +1,7 @@
+clc
+clear all
+close all
+
 % helper funcion to have variavle separeded from this script.
 function run_one_case(mainScript)
     run(mainScript);
@@ -7,12 +11,36 @@ mainScript = 'PSF_R_AOSsim_oversampled.m';
 
 
 % Parameter to sweep
-ToSweep = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]; % LGS magnitude values to sweep through
+% ToSweep = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]; % LGS magnitude values to sweep through
+ToSweep = [4, 5, 6, 7]
 sweptParameter = 'magnitude';
 
-for k = 1:numel(ToSweep)
+nRuns = numel(ToSweep);
+h = waitbar(0, 'Starting parameter sweep...');
+pos = get(h, 'Position');      % [left bottom width height]
+pos(4) = 120;                  % make it a bit taller
+set(h, 'Position', pos);
+
+t0 = tic;
+for k = 1: nRuns
     fprintf('Running simulation with %s = %g\n', sweptParameter, ToSweep(k));
+    
     sweptValue = ToSweep(k);
+    
+    if k == 1
+        msg = sprintf(['Run %d/%d\n' ...
+                   'Value = %g\n' ...
+                   'Runs left = %d\n' ...
+                   'Est. time left = too early to say...'], ...
+                   k, nRuns, sweptValue, nRuns-k+1);
+        waitbar((k-1)/nRuns, h, msg);
+    else
+        msg = sprintf(['Finished run %d/%d\n' ...
+                   'Runs left = %d\n' ...
+                   'Est. time left = %.1f s'], ...
+                   k, nRuns, nRuns-k, remainingTime);
+        waitbar((k-1)/nRuns, h, msg);
+    end
 
     runTag{k} = sprintf('%s_%0.4g', sweptParameter, sweptValue);
     runTag{k} = strrep(runTag{k}, '.', 'p');
@@ -55,8 +83,8 @@ for k = 1:numel(ToSweep)
 
     fprintf(fid, '# Data storage\n');
     fprintf(fid, 'chunksize    = 10e6           # [B] (double)\n');
-    fprintf(fid, 'exposureTime = 10000            # [iterations]\n');
-    fprintf(fid, 'startDelay   = 100              # [iterations]\n');
+    fprintf(fid, 'exposureTime = 10            # [iterations]\n');
+    fprintf(fid, 'startDelay   = 1              # [iterations]\n');
     fprintf(fid, 'gain_cl      = 0.5              # [-] Integrator gain\n\n');
 
     fprintf(fid, '# Log\n');
@@ -82,4 +110,16 @@ for k = 1:numel(ToSweep)
     fclose(fid);
 
     run_one_case(mainScript);
+    elapsed = toc(t0);
+    avgTime = elapsed / k;
+    remainingTime = avgTime * (nRuns - k);
+
+    msg = sprintf(['Finished run %d/%d\n' ...
+                   'Runs left = %d\n' ...
+                   'Est. time left = %.1f s'], ...
+                   k, nRuns, nRuns-k, remainingTime);
+
+    waitbar(k/nRuns, h, msg);
 end
+msg = sprintf('Finished\n\n');
+waitbar(1, h, msg);

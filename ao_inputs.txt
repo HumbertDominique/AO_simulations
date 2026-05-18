@@ -9,7 +9,7 @@ wind         = [0.04]           # [m/s] (array of double) Wind speed(s)
 windDir      = [355/113]        # [rad] (array of double) Wind direction(s)
 
 # LGS
-NGSmagnitude = 5                # [m] (double) Laser guide star magnitude
+NGSmagnitude = 7                # [m] (double) Laser guide star magnitude
 
 # DM / WFS geometry
 oversampling = 1                # [-] (uint)
@@ -29,7 +29,7 @@ samplingFreq = 500              # [Hz] (double)
 
 # Data storage
 chunksize    = 10e6           # [B] (double)
-exposureTime = 5            # [iterations]
+exposureTime = 10            # [iterations]
 startDelay   = 1              # [iterations]
 gain_cl      = 0.5              # [-] Integrator gain
 
@@ -43,7 +43,7 @@ SAVERWFE        = false
 SAVEDIFFLIMITED = false
 
 # Output file prefixes
-outputDir           = output\magnitude_5
+outputDir           = output\magnitude_7
 fileID_WF           = ao_WF_
 fileID_WFS          = ao_WFS_
 fileID_lightfield   = ao_lightfield_

@@ -154,7 +154,7 @@ classdef deformableMirror < handle
                 obj.nActuator,obj.nActuator,obj.nValidActuator)
             fprintf('----------------------------------------------------\n')
             if isa(obj.modes,'influenceFunction')
-                display(obj.modes)
+               % display(obj.modes)
             end
             
         end

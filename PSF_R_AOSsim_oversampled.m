@@ -63,9 +63,9 @@ ngs = ngs.*tel*wfs;
 wfs.INIT
 
 +wfs;
-figure
-imagesc(wfs.camera,'parent',subplot(3,2,[1,4]))
-slopesDisplay(wfs,'parent',subplot(3,2,[5,6]))
+% figure
+% imagesc(wfs.camera,'parent',subplot(3,2,[1,4]))
+% slopesDisplay(wfs,'parent',subplot(3,2,[5,6]))
 wfs.camera.frameListener.Enabled = true;
 wfs.slopesListener.Enabled = true;
 wfs.pointingDirection = zeros(2,1);
@@ -96,9 +96,6 @@ slopesLinCoef = polyfit(Ox_in,Ox_out,1);
 wfs.slopesUnits = 1/slopesLinCoef(1);
 ngs.zenith = 0;
 wfs.pointingDirection = [];
-%
-
-% display wfs.validActuator
 
 
 bifa = influenceFunction('monotonic',0.47);

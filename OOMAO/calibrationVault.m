@@ -84,7 +84,7 @@ classdef calibrationVault < handle
             obj.p_nThresholded = 0;
             obj.p_threshold = obj.eigenValues(end);
             
-            show(obj)
+            % show(obj)
             
             if ~isempty(p.Results.cond)
                 obj.cond = p.Results.cond;
@@ -131,36 +131,36 @@ classdef calibrationVault < handle
             val = obj.eigenValues(1)/obj.eigenValues(end-obj.p_nThresholded);
         end
           
-        function show(obj)
-            
-            if ~obj.noshow
-                
-                figure
-                
-                subplot(2,2,[1,3])
-                imagesc(obj.D)
-                xlabel('DM actuators')
-                ylabel('WFS slopes')
-                ylabel(colorbar,'slopes/actuator stroke')
-                
-                obj.eigAxis = subplot(2,2,2);
-                semilogy(obj.eigenValues,'.')
-                xlabel('Eigen modes')
-                ylabel('Eigen values')
-                
-                obj.eigLine = line(get(obj.eigAxis,'xlim'),ones(1,2)*obj.p_threshold,'color','r','parent',obj.eigAxis);
-                
-                if ~isempty(obj.modes)
-                    obj.eigModeAxis = subplot(2,2,4);
-                    obj.eigImage = imagesc(tools.toggleFrame(obj.modes*obj.V(:,end-obj.p_nThresholded)));
-                    axis square
-                    colorbar
-                end
-                
-                %             drawnow
-            end
-
-        end
+        % function show(obj)
+        % 
+        %     if ~obj.noshow
+        % 
+        %         figure
+        % 
+        %         subplot(2,2,[1,3])
+        %         imagesc(obj.D)
+        %         xlabel('DM actuators')
+        %         ylabel('WFS slopes')
+        %         ylabel(colorbar,'slopes/actuator stroke')
+        % 
+        %         obj.eigAxis = subplot(2,2,2);
+        %         semilogy(obj.eigenValues,'.')
+        %         xlabel('Eigen modes')
+        %         ylabel('Eigen values')
+        % 
+        %         obj.eigLine = line(get(obj.eigAxis,'xlim'),ones(1,2)*obj.p_threshold,'color','r','parent',obj.eigAxis);
+        % 
+        %         if ~isempty(obj.modes)
+        %             obj.eigModeAxis = subplot(2,2,4);
+        %             obj.eigImage = imagesc(tools.toggleFrame(obj.modes*obj.V(:,end-obj.p_nThresholded)));
+        %             axis square
+        %             colorbar
+        %         end
+        % 
+        %         %             drawnow
+        %     end
+        % 
+        % end
         
         %% Show eigen modes
         function showMode(obj,modes,colorscale)
