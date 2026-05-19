@@ -2,18 +2,24 @@ clc
 clear all
 close all
 
-% helper funcion to have variavle separeded from this script.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+mainScript = 'PSF_R_AOSsim_oversampled.m';
+
+% Parameter to sweep
+ToSweep = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]; % LGS magnitude values to sweep throug
+sweptParameter = 'magnitude';
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+%%% helper funcion to have variavle separeded from this script.
 function run_one_case(mainScript)
     run(mainScript);
 end
+%%%
 
-mainScript = 'PSF_R_AOSsim_oversampled.m';
 
-
-% Parameter to sweep
-% ToSweep = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]; % LGS magnitude values to sweep through
-ToSweep = [4, 5, 6, 7]
-sweptParameter = 'magnitude';
 
 nRuns = numel(ToSweep);
 h = waitbar(0, 'Starting parameter sweep...');
@@ -83,8 +89,8 @@ for k = 1: nRuns
 
     fprintf(fid, '# Data storage\n');
     fprintf(fid, 'chunksize    = 10e6           # [B] (double)\n');
-    fprintf(fid, 'exposureTime = 10            # [iterations]\n');
-    fprintf(fid, 'startDelay   = 1              # [iterations]\n');
+    fprintf(fid, 'exposureTime = 11000            # [iterations]\n');
+    fprintf(fid, 'startDelay   = 100              # [iterations]\n');
     fprintf(fid, 'gain_cl      = 0.5              # [-] Integrator gain\n\n');
 
     fprintf(fid, '# Log\n');
