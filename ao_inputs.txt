@@ -26,11 +26,12 @@ readOutNoise = 0                # [-] (double)
 
 # Timing
 samplingFreq = 500              # [Hz] (double)
+lag_c          = 0                # [cycles] lag = lag_c/samplingFreq [s]
 
 # Data storage
-chunksize    = 2000e6           # [B] (double)
-exposureTime = 10100            # [iterations]
-startDelay   = 100              # [iterations]
+chunksize    = 20e6           # [B] (double)
+exposureTime = 100           # [iterations]
+startDelay   = 10              # [iterations]
 gain_cl      = 0.5              # [-] Integrator gain
 
 # Log

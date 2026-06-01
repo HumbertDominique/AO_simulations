@@ -24,6 +24,8 @@ d            = D / nL;
 dmStroke     = cfg.dmStroke;
 
 samplingFreq = cfg.samplingFreq;
+lag_c        = cfg.lag_c;
+
 chunksize    = cfg.chunksize;
 exposureTime = cfg.exposureTime;
 startDelay   = cfg.startDelay;
@@ -240,6 +242,9 @@ if exist(outputDir+"\"+fileID_metadata+".txt", 'file'), delete(outputDir+"\"+fil
 rwfe_waves_history = zeros(batchItSize,1);
 
 %% Regulation
+
+lag_buffer = zeros(length(dm.coefs),lag_c+1);   % +1 becaus Matlab arrays start at 1. Also it allows for a lag of 0 to work without special case handling.
+
 flush(cam)
 flush(instantCam)
 
@@ -254,8 +259,16 @@ for k=1:nIteration
     +science;
     +instantScience;
     % Closed-loop controller
-    dm.coefs = dm.coefs - gain_cl*calibDm.M*wfs.slopes;
-    dm.coefs = min(max(dm.coefs, -1), 1);
+    lag_buffer(:,lag_c+1) = min(max(dm.coefs - gain_cl*calibDm.M*wfs.slopes, -1), 1);
+
+    % Moving the last element of the buffer to the first position and shifting the rest to the right
+    for j = lag_c+1:-1:1
+        if j > 1
+            lag_buffer(:,j-1) = lag_buffer(:,j);
+        end
+    end
+
+    dm.coefs = lag_buffer(:,1);
     % fprintf('RWFE at iteration %d: %f waves\n', k, sqrt(var(ngs))./2/pi);
         % local log
     if SAVEWF

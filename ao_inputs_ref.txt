@@ -26,6 +26,7 @@ readOutNoise = 0                # [-] (double) noise for all detectors
 
 # Timing
 samplingFreq = 500              # [Hz] (double) AO loop exposure frequency
+lag_c          = 1                # [cycles] lag = lag_c/samplingFreq [s]
 
 # Data storage
 chunksize    = 2000e6            # [B] (double) Max RAM size per data for batch saving
