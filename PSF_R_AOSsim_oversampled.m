@@ -48,7 +48,8 @@ fileID_WF           = cfg.fileID_WF;
 fileID_WFS          = cfg.fileID_WFS;
 fileID_lightfield   = cfg.fileID_lightfield;
 fileID_DM           = cfg.fileID_DM;
-fileID_psf          = cfg.fileID_psf;
+fileID_ipsf          = cfg.fileID_ipsf;
+fileID_ipsf_diff_lim= cfg.fileID_ipsf_diff_lim;
 fileID_rwfe         = cfg.fileID_rwfe;
 fileID_diff_limited = cfg.fileID_diff_limited;
 fileID_metadata     = cfg.fileID_metadata;
@@ -240,7 +241,7 @@ for i = 1 : batchItSize
         lightfieldHistory = zeros(size(wfs.camera.frame, 1), size(wfs.camera.frame, 2),batchItSize, 'uint8');
     end
     if SAVEPSF
-        if exist(outputDir+"\"+fileID_psf+string(i)+".h5", 'file'), delete(outputDir+"\"+fileID_psf+string(i)+".h5"); end
+        if exist(outputDir+"\"+fileID_ipsf+string(i)+".h5", 'file'), delete(outputDir+"\"+fileID_ipsf+string(i)+".h5"); end
         psfHistory = zeros(size(instantCam.frame, 1), size(instantCam.frame, 2),batchItSize, 'uint8');
     end
     if SAVERWFE
@@ -339,8 +340,8 @@ for k=1:nIteration
         end
         if SAVEPSF
             sz = size(psfHistory);
-            h5create(outputDir+"\"+fileID_psf+string(batchIndex)+".h5", '/psf_history', sz, 'ChunkSize', [sz(1) sz(2) 1], 'DataType', 'uint8');
-            h5write(outputDir+"\"+fileID_psf+string(batchIndex)+".h5", '/psf_history', psfHistory);
+            h5create(outputDir+"\"+fileID_ipsf+string(batchIndex)+".h5", '/psf_history', sz, 'ChunkSize', [sz(1) sz(2) 1], 'DataType', 'uint8');
+            h5write(outputDir+"\"+fileID_ipsf+string(batchIndex)+".h5", '/psf_history', psfHistory);
             psfHistory = zeros(size(instantCam.frame, 1), size(instantCam.frame, 2),batchItSize);
         end
         if SAVERWFE

@@ -29,9 +29,9 @@ samplingFreq = 500              # [Hz] (double)
 lag_c          = 0                # [cycles] lag = lag_c/samplingFreq [s]
 
 # Data storage
-chunksize    = 10e6           # [B] (double)
-exposureTime = 10           # [iterations]
-startDelay   = 1              # [iterations]
+chunksize    = 2000e6           # [B] (double)
+exposureTime = 10000           # [iterations]
+startDelay   = 100              # [iterations]
 gain_cl      = 0.5              # [-] Integrator gain
 
 # Log
@@ -51,7 +51,8 @@ fileID_WF           = ao_WF_
 fileID_WFS          = ao_WFS_
 fileID_lightfield   = ao_lightfield_
 fileID_DM           = ao_DM_
-fileID_psf          = ao_psf_
+fileID_ipsf         = ao_iPSF_
+fileID_ipsf_diff_lim= ipsf_difflim
 fileID_rwfe         = ao_rwfe_
 fileID_diff_limited = ao_diff_limited_
 fileID_metadata     = ao_metadata
