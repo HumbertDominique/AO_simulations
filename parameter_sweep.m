@@ -80,7 +80,7 @@ for k = 1: nRuns
     fprintf(fid, 'dmStroke     = 10e-9            # [m] (double)\n\n');
 
     fprintf(fid, '# WFS camera\n');
-    fprintf(fid, 'SH_ill_thresh = 0.005           # [-] (double)\n');
+    fprintf(fid, 'SH_ill_thresh = 0.5           # [-] (double)\n');
     fprintf(fid, 'photonNoise  = false            # [-] (bool)\n');
     fprintf(fid, 'readOutNoise = 0                # [-] (double)\n\n');
 
@@ -101,6 +101,8 @@ for k = 1: nRuns
     fprintf(fid, 'SAVEPSF         = false\n');
     fprintf(fid, 'SAVERWFE        = false\n');
     fprintf(fid, 'SAVEDIFFLIMITED = false\n\n');
+    fprintf(fid, 'SAVEINSTANTDIFFLIMITED = true');
+
 
     fprintf(fid, '# Output file prefixes\n');
     fprintf(fid, 'outputDir           = %s\n', outDir);

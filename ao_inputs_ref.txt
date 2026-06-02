@@ -20,7 +20,7 @@ nPx          = 27               # [-] (uint)Pixels per lenslet
 D            = 0.0175           # [m] (double) Telescope diameter
 dmStroke     = 10e-9            # [m] (double) dm stroke
 # WFS camera
-SH_ill_thresh = 0.005           # [-] (double) illumination threshold of the lenslet in order to consider it as being inside the pupil.
+SH_ill_thresh = 0.5           # [-] (double) illumination threshold of the lenslet in order to consider it as being inside the pupil.
 photonNoise  = false            # [-] (bool) photon noise flag for all detectors
 readOutNoise = 0                # [-] (double) noise for all detectors
 
@@ -42,6 +42,7 @@ SAVEDM          = true
 SAVEPSF         = true
 SAVERWFE        = true
 SAVEDIFFLIMITED = true
+SAVEINSTANTDIFFLIMITED = true
 
 # Output file prefixes
 outputDir           = output

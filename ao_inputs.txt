@@ -20,7 +20,7 @@ D            = 0.0175           # [m] (double)
 dmStroke     = 10e-9            # [m] (double)
 
 # WFS camera
-SH_ill_thresh = 0.005           # [-] (double)
+SH_ill_thresh = 0.5           # [-] (double)
 photonNoise  = false            # [-] (bool)
 readOutNoise = 0                # [-] (double)
 
@@ -29,9 +29,9 @@ samplingFreq = 500              # [Hz] (double)
 lag_c          = 0                # [cycles] lag = lag_c/samplingFreq [s]
 
 # Data storage
-chunksize    = 20e6           # [B] (double)
-exposureTime = 100           # [iterations]
-startDelay   = 10              # [iterations]
+chunksize    = 10e6           # [B] (double)
+exposureTime = 10           # [iterations]
+startDelay   = 1              # [iterations]
 gain_cl      = 0.5              # [-] Integrator gain
 
 # Log
@@ -41,7 +41,9 @@ SAVELIGHTFIELD  = True
 SAVEDM          = True
 SAVEPSF         = True
 SAVERWFE        = True
-SAVEDIFFLIMITED = False
+SAVEDIFFLIMITED = True
+SAVEINSTANTDIFFLIMITED = true
+
 
 # Output file prefixes
 outputDir           = output\

@@ -41,6 +41,7 @@ SAVEDM          = cfg.SAVEDM;
 SAVEPSF         = cfg.SAVEPSF;
 SAVERWFE        = cfg.SAVERWFE;
 SAVEDIFFLIMITED = cfg.SAVEDIFFLIMITED;
+SAVEINSTANTDIFFLIMITED = cfg.SAVEINSTANTDIFFLIMITED
 
 outputDir           = cfg.outputDir;
 fileID_WF           = cfg.fileID_WF;
@@ -177,7 +178,21 @@ fprintf('Ipsf Strehl ratio single frame init: %4.1f\n',instantCam.strehl);
 % Setting the the actual paths
 
 science = science.*tel*dm*cam;
+if SAVEINSTANTDIFFLIMITED
+    if exist(outputDir+"\ipsf_difflim.h5", 'file'), delete(outputDir+"\ipsf_difflim.h5"); end
+    tel = tel-atm
+    instantScience = instantScience.*tel*dm*instantCam;
+    +instantScience
+    iPSF_strehl = uint8(floor(instantCam.frame*255));
+    sz = size(iPSF_strehl);
+            h5create(outputDir+"\ipsf_difflim.h5", '/ipsf_difflim', sz, 'ChunkSize', [sz(1) sz(2)], 'DataType', 'uint8');
+            h5write(outputDir+"\ipsf_difflim.h5", '/ipsf_difflim', iPSF_strehl);
+    clear iPSF_strehl
+    tel = tel+atm
+end
+
 instantScience = instantScience.*tel*dm*instantCam;
+
 ngs = ngs.*tel*dm*wfs;
 
 %% Regulation settings
