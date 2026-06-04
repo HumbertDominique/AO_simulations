@@ -9,7 +9,7 @@ wind         = [0.04]           # [m/s] (array of double) Wind speed(s)
 windDir      = [355/113]        # [rad] (array of double) Wind direction(s)
 
 # LGS
-NGSmagnitude = 4.5                # [m] (double) Laser guide star magnitude
+NGSmagnitude = 16                # [m] (double) Laser guide star magnitude
 
 # DM / WFS geometry
 oversampling = 1                # [-] (uint)
@@ -21,38 +21,37 @@ dmStroke     = 10e-9            # [m] (double)
 
 # WFS camera
 SH_ill_thresh = 0.5           # [-] (double)
-photonNoise  = false            # [-] (bool)
-readOutNoise = 0                # [-] (double)
+photonNoise  = True            # [-] (bool)
+readOutNoise = 13                # [e-/px] (double)
 
 # Timing
 samplingFreq = 500              # [Hz] (double)
-lag_c          = 0                # [cycles] lag = lag_c/samplingFreq [s]
+lag_c          = 1                # [cycles] lag = lag_c/samplingFreq [s]
 
 # Data storage
-chunksize    = 2000e6           # [B] (double)
-exposureTime = 10000           # [iterations]
+chunksize    = 10e6           # [B] (double)
+exposureTime = 20000            # [iterations]
 startDelay   = 100              # [iterations]
 gain_cl      = 0.5              # [-] Integrator gain
 
 # Log
 SAVEWF          = false
-SAVESLOPES      = True
-SAVELIGHTFIELD  = True
-SAVEDM          = True
-SAVEPSF         = True
-SAVERWFE        = True
-SAVEDIFFLIMITED = True
-SAVEINSTANTDIFFLIMITED = true
-
+SAVESLOPES      = false
+SAVELIGHTFIELD  = false
+SAVEDM          = false
+SAVEPSF         = false
+SAVERWFE        = false
+SAVEDIFFLIMITED = true
+SAVEINSTANTDIFFLIMITED = false
 
 # Output file prefixes
-outputDir           = output\
+outputDir           = output\magnitude_16
 fileID_WF           = ao_WF_
 fileID_WFS          = ao_WFS_
 fileID_lightfield   = ao_lightfield_
 fileID_DM           = ao_DM_
-fileID_ipsf         = ao_iPSF_
-fileID_ipsf_diff_lim= ipsf_difflim
+fileID_ipsf          = ao_ipsf_
+fileID_ipsf_diff_lim= ao_ipsf_difflim_
 fileID_rwfe         = ao_rwfe_
 fileID_diff_limited = ao_diff_limited_
 fileID_metadata     = ao_metadata

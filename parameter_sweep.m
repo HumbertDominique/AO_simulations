@@ -3,7 +3,7 @@ clear all
 close all
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-mainScript = 'PSF_R_AOSsim_oversampled.m';
+mainScript = 'PSF_R_AOSsim_oversampled_double.m';
 
 % Parameter to sweep
 ToSweep = [4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]; % LGS magnitude values to sweep throug
@@ -81,15 +81,16 @@ for k = 1: nRuns
 
     fprintf(fid, '# WFS camera\n');
     fprintf(fid, 'SH_ill_thresh = 0.5           # [-] (double)\n');
-    fprintf(fid, 'photonNoise  = false            # [-] (bool)\n');
-    fprintf(fid, 'readOutNoise = 0                # [-] (double)\n\n');
+    fprintf(fid, 'photonNoise  = True            # [-] (bool)\n');
+    fprintf(fid, 'readOutNoise = 13                # [e-/px] (double)\n\n');
 
     fprintf(fid, '# Timing\n');
-    fprintf(fid, 'samplingFreq = 500              # [Hz] (double)\n\n');
+    fprintf(fid, 'samplingFreq = 500              # [Hz] (double)\n');
+    fprintf(fid, 'lag_c          = 1                # [cycles] lag = lag_c/samplingFreq [s]\n\n');
 
     fprintf(fid, '# Data storage\n');
     fprintf(fid, 'chunksize    = 10e6           # [B] (double)\n');
-    fprintf(fid, 'exposureTime = 11000            # [iterations]\n');
+    fprintf(fid, 'exposureTime = 20000            # [iterations]\n');
     fprintf(fid, 'startDelay   = 100              # [iterations]\n');
     fprintf(fid, 'gain_cl      = 0.5              # [-] Integrator gain\n\n');
 
@@ -100,8 +101,8 @@ for k = 1: nRuns
     fprintf(fid, 'SAVEDM          = false\n');
     fprintf(fid, 'SAVEPSF         = false\n');
     fprintf(fid, 'SAVERWFE        = false\n');
-    fprintf(fid, 'SAVEDIFFLIMITED = false\n\n');
-    fprintf(fid, 'SAVEINSTANTDIFFLIMITED = true');
+    fprintf(fid, 'SAVEDIFFLIMITED = true\n');
+    fprintf(fid, 'SAVEINSTANTDIFFLIMITED = false\n\n');
 
 
     fprintf(fid, '# Output file prefixes\n');
