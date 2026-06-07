@@ -7,5 +7,5 @@ elseif strcmp(type, 'uint16')
 elseif strcmp(type, 'single')
     casted = single(data);
 elseif strcmp(type, 'double')
-    casted = data;
+    casted = double(data);
 end

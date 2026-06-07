@@ -48,7 +48,7 @@ SAVEDM          = cfg.SAVEDM;
 SAVEPSF         = cfg.SAVEPSF;
 SAVERWFE        = cfg.SAVERWFE;
 SAVEDIFFLIMITED = cfg.SAVEDIFFLIMITED;
-SAVEINSTANTDIFFLIMITED = cfg.SAVEINSTANTDIFFLIMITED
+SAVEINSTANTDIFFLIMITED = cfg.SAVEINSTANTDIFFLIMITED;
 
 outputDir           = cfg.outputDir;
 fileID_WF           = cfg.fileID_WF;
@@ -269,10 +269,8 @@ rwfe_waves_history = zeros(batchItSize,1);
 %% Regulation
 
 lag_buffer = zeros(length(dm.coefs),lag_c+1);   % +1 becaus Matlab arrays start at 1. Also it allows for a lag of 0 to work without special case handling.
-
 flush(cam)
 flush(instantCam)
-
 indexInBatch = 0;
 for k=1:nIteration
     indexInBatch = indexInBatch + 1;
@@ -283,18 +281,16 @@ for k=1:nIteration
     +ngs;
     +science;
     +instantScience;
+
     % Closed-loop controller
     lag_buffer(:,lag_c+1) = min(max(dm.coefs - gain_cl*calibDm.M*wfs.slopes, -1), 1);
-
     % Moving the last element of the buffer to the first position and shifting the rest to the right
-    for j = lag_c+1:-1:1
-        if j > 1
-            lag_buffer(:,j-1) = lag_buffer(:,j);
-        end
+    for j = 1: lag_c
+        lag_buffer(:,j) = lag_buffer(:,j+1);
     end
 
     dm.coefs = lag_buffer(:,1);
-    % fprintf('RWFE at iteration %d: %f waves\n', k, sqrt(var(ngs))./2/pi);
+
         % local log
     if SAVEWF
         WFHistory(:,:,indexInBatch) = ngs.meanRmPhase;
@@ -312,7 +308,7 @@ for k=1:nIteration
         rwfe_waves_history(indexInBatch) = sqrt(var(ngs))./2/pi; % [waves]
     end
     if SAVEPSF
-        psfHistory(:,:,indexInBatch) = type_cast(instantCam.frame,sensor_type);
+        psfHistory(:,:,indexInBatch) = type_cast(instantCam.frame, sensor_type);
     end
     if mod(k-1, round(nIteration/50)) == 0 || k == nIteration
         fprintf('Progress: %d%% done\n', round(100*k/nIteration));
