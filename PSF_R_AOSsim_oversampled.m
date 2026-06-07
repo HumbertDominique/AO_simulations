@@ -378,7 +378,6 @@ end
 if exist(metadataFile, 'file')
     delete(metadataFile)
 end
-fprintf(input_file)
 fidIn = fopen(input_file, 'r');
 fidMeta = fopen(metadataFile, 'w');
 while ~feof(fidIn)
@@ -392,7 +391,7 @@ fprintf(fidMeta, '\n\n');
 fprintf(fidMeta, '---------------------- OUTPUTS----------------------\n\n');
 fprintf(fidMeta, 'batchItSize = %d\n', batchItSize);
 fprintf(fidMeta, 'nBatch = %d\n', nBatch);
-fprintf(fidMeta, 'LastBatchItSize = %d\n', LastBatchItSize)
+fprintf(fidMeta, 'LastBatchItSize = %d\n', LastBatchItSize);
 fprintf(fidMeta, 'LongStrehl = %d\n', cam.strehl);
 
 fclose(fidIn);

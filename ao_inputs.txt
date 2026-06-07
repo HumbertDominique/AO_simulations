@@ -48,7 +48,7 @@ SAVEDIFFLIMITED = true
 SAVEINSTANTDIFFLIMITED = true
 
 # Output file prefixes
-outputDir           = output\magnitude_14
+outputDir           = output
 fileID_WF           = ao_WF_
 fileID_WFS          = ao_WFS_
 fileID_lightfield   = ao_lightfield_
