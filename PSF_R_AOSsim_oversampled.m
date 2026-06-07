@@ -5,6 +5,7 @@ addpath('OOMAO')
 input_file = "ao_inputs.txt"
 
 cfg = readConfig('ao_inputs.txt');
+SEED = cfg.SEED;
 r0           = cfg.r0;
 L0           = cfg.L0;
 Asl          = cfg.Asl;
@@ -63,11 +64,17 @@ fileID_metadata     = cfg.fileID_metadata;
 
 metadataFile = outputDir + "/metadata.txt";
 
+
 %% code
 
 ngs = source;
 
-atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',Asl,'windSpeed',wind,'windDirection',windDir);
+if strcmp(SEED, 'None')
+    stream = RandStream('mt19937ar','Seed',rand()*2^32);
+else
+    stream = RandStream('mt19937ar','Seed',SEED);
+end
+atm = atmosphere(photometry.HeNe,r0,L0,'fractionnalR0',[1],'altitude',Asl,'windSpeed',wind,'windDirection',windDir,'randStream',stream);
 tel = telescope(D,'resolution',nRes,'fieldOfViewInArcsec',3,'samplingTime',1/samplingFreq);
 
 wfs = shackHartmann(nL,nRes,SH_ill_thresh);

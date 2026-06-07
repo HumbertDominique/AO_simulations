@@ -1,6 +1,8 @@
 # AO Simulation Parameters
 # Units are indicated in comments; edit values only
 
+SEED = None                       # integer or None
+
 # Atmosphere
 r0           = 3.75e-3          # [m] (double) Fried parameter
 L0           = 30               # [m] (double) Outer scale
@@ -29,11 +31,11 @@ readOutNoise = 0               # [e-/px] (double)
 
 # Timing
 samplingFreq = 500              # [Hz] (double)
-lag_c          = 5              # [cycles] lag = lag_c/samplingFreq [s]. Empty DM commands will apear in the output if lag_c<startDelay
+lag_c          = 2              # [cycles] lag = lag_c/samplingFreq [s]. Empty DM commands will apear in the output if lag_c<startDelay
 
 # Data storage
 chunksize    = 10e6             # [B] (double)
-exposureTime = 100            # [iterations]
+exposureTime = 10            # [iterations]
 startDelay   = 1              # [iterations]
 gain_cl      = 0.5              # [-] Integrator gain
 
