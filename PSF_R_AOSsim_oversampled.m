@@ -2,6 +2,7 @@
 clear all
 close all
 addpath('OOMAO')
+input_file = "ao_inputs.txt"
 
 cfg = readConfig('ao_inputs.txt');
 r0           = cfg.r0;
@@ -34,6 +35,12 @@ SH_ill_thresh = cfg.SH_ill_thresh;
 photonNoise = cfg.photonNoise;
 readOutNoise = cfg.readOutNoise;
 
+if readOutNoise == 1
+    sensor_type = 'double'
+else
+    sensor_type = cfg.sensor_type;
+end
+
 SAVEWF       = cfg.SAVEWF;
 SAVESLOPES      = cfg.SAVESLOPES;
 SAVELIGHTFIELD  = cfg.SAVELIGHTFIELD;
@@ -53,6 +60,8 @@ fileID_ipsf_diff_lim= cfg.fileID_ipsf_diff_lim;
 fileID_rwfe         = cfg.fileID_rwfe;
 fileID_diff_limited = cfg.fileID_diff_limited;
 fileID_metadata     = cfg.fileID_metadata;
+
+metadataFile = outputDir + "/metadata.txt";
 
 %% code
 
@@ -173,8 +182,8 @@ tel = tel + atm;
 +science
 +instantScience
 
-fprintf('Long PSF Strehl ratio single frame init: %4.1f\n',cam.strehl);
-fprintf('Ipsf Strehl ratio single frame init: %4.1f\n',instantCam.strehl);
+% fprintf('Long PSF Strehl ratio single frame init: %4.1f\n',cam.strehl);
+% fprintf('Ipsf Strehl ratio single frame init: %4.1f\n',instantCam.strehl);
 
 % Setting the the actual paths
 
@@ -184,9 +193,9 @@ if SAVEINSTANTDIFFLIMITED
     tel = tel-atm
     instantScience = instantScience.*tel*dm*instantCam;
     +instantScience
-    iPSF_strehl = uint8(floor(instantCam.frame*255));
+    iPSF_strehl = type_cast(instantCam.frame,sensor_type);
     sz = size(iPSF_strehl);
-            h5create(outputDir+"\ipsf_difflim.h5", '/ipsf_difflim', sz, 'ChunkSize', [sz(1) sz(2)], 'DataType', 'uint8');
+            h5create(outputDir+"\ipsf_difflim.h5", '/ipsf_difflim', sz, 'ChunkSize', [sz(1) sz(2)], 'DataType', sensor_type);
             h5write(outputDir+"\ipsf_difflim.h5", '/ipsf_difflim', iPSF_strehl);
     clear iPSF_strehl
     tel = tel+atm
@@ -238,11 +247,11 @@ for i = 1 : batchItSize
     end
     if SAVELIGHTFIELD
         if exist(outputDir+"\"+fileID_lightfield+string(i)+".h5", 'file'), delete(outputDir+"\"+fileID_lightfield+string(i)+".h5"); end
-        lightfieldHistory = zeros(size(wfs.camera.frame, 1), size(wfs.camera.frame, 2),batchItSize, 'uint8');
+        lightfieldHistory = zeros(size(wfs.camera.frame, 1), size(wfs.camera.frame, 2),batchItSize, sensor_type);
     end
     if SAVEPSF
         if exist(outputDir+"\"+fileID_ipsf+string(i)+".h5", 'file'), delete(outputDir+"\"+fileID_ipsf+string(i)+".h5"); end
-        psfHistory = zeros(size(instantCam.frame, 1), size(instantCam.frame, 2),batchItSize, 'uint8');
+        psfHistory = zeros(size(instantCam.frame, 1), size(instantCam.frame, 2),batchItSize, sensor_type);
     end
     if SAVERWFE
         if exist(outputDir+"\"+fileID_rwfe+string(i)+".h5", 'file'), delete(outputDir+"\"+fileID_rwfe+string(i)+".h5"); end
@@ -294,7 +303,7 @@ for k=1:nIteration
         WFSHistory(:,indexInBatch) = wfs.slopes;
     end
     if SAVELIGHTFIELD
-        lightfieldHistory(:,:,indexInBatch) = uint8(floor(wfs.camera.frame*255));
+        lightfieldHistory(:,:,indexInBatch) = type_cast(wfs.camera.frame, sensor_type);
     end
     if SAVEDM
         dmCommandsHistory(:, indexInBatch) = dm.coefs;
@@ -303,7 +312,7 @@ for k=1:nIteration
         rwfe_waves_history(indexInBatch) = sqrt(var(ngs))./2/pi; % [waves]
     end
     if SAVEPSF
-        psfHistory(:,:,indexInBatch) = uint8(floor(instantCam.frame*255));
+        psfHistory(:,:,indexInBatch) = type_cast(instantCam.frame,sensor_type);
     end
     if mod(k-1, round(nIteration/50)) == 0 || k == nIteration
         fprintf('Progress: %d%% done\n', round(100*k/nIteration));
@@ -328,9 +337,9 @@ for k=1:nIteration
             sz = size(lightfieldHistory);
             totBytes = prod(sz);   % for uint8, this is roughly the expected file size
             % fprintf('Dataset size: [%d,%d,%d] -> %d bytes\n', sz, totBytes);
-            h5create(outputDir+"\"+fileID_lightfield+string(batchIndex)+".h5", '/wf_lightfield', sz, 'ChunkSize', [sz(1) sz(2) 1],'DataType', 'uint8');
+            h5create(outputDir+"\"+fileID_lightfield+string(batchIndex)+".h5", '/wf_lightfield', sz, 'ChunkSize', [sz(1) sz(2) 1],'DataType', sensor_type);
             h5write(outputDir+"\"+fileID_lightfield+string(batchIndex)+".h5", '/wf_lightfield', lightfieldHistory);
-            lightfieldHistory = zeros(size(wfs.camera.frame, 1), size(wfs.camera.frame, 2),batchItSize);
+            lightfieldHistory = zeros(size(wfs.camera.frame, 1), size(wfs.camera.frame, 2),batchItSize, sensor_type);
         end
         if SAVEDM
             sz = size(dmCommandsHistory);
@@ -340,7 +349,7 @@ for k=1:nIteration
         end
         if SAVEPSF
             sz = size(psfHistory);
-            h5create(outputDir+"\"+fileID_ipsf+string(batchIndex)+".h5", '/psf_history', sz, 'ChunkSize', [sz(1) sz(2) 1], 'DataType', 'uint8');
+            h5create(outputDir+"\"+fileID_ipsf+string(batchIndex)+".h5", '/psf_history', sz, 'ChunkSize', [sz(1) sz(2) 1], 'DataType', sensor_type);
             h5write(outputDir+"\"+fileID_ipsf+string(batchIndex)+".h5", '/psf_history', psfHistory);
             psfHistory = zeros(size(instantCam.frame, 1), size(instantCam.frame, 2),batchItSize);
         end
@@ -360,11 +369,34 @@ if SAVEDIFFLIMITED
     h5write(outputDir+"\"+fileID_diff_limited+".h5", '/diff_limited', diff_limited);
 end
 %%
-rowNames = {'D';'r0';'L0';'Asl';'wind';'windDir';'Exposure time';'nIteration';'gain_cl';'batchItSize';'nBatch';'LastBatchItSize'; 'oversampling'; 'nActWSF';'edge_act'; 'startDelay'; 'longStrehl'};
-values =    [D;  r0;  L0;  Asl;  wind;  windDir;  exposureTime;   nIteration;  gain_cl;  batchItSize;  nBatch;  LastBatchItSize; oversampling; nActWSF; edge_act; startDelay; cam.strehl];
-T = table(values,'RowNames',rowNames);
-writetable(T,outputDir+"\"+fileID_metadata+".txt",'Delimiter','\t','WriteRowNames',true);
+%%
+% rowNames = {'D';'r0';'L0';'Asl';'wind';'windDir';'Exposure time';'nIteration';'gain_cl';'batchItSize';'nBatch';'LastBatchItSize'; 'oversampling'; 'nActWSF';'edge_act'; 'startDelay'; 'longStrehl'; 'magnitude'};
+% values =    [D;  r0;  L0;  Asl;  wind;  windDir;  exposureTime;   nIteration;  gain_cl;  batchItSize;  nBatch;  LastBatchItSize; oversampling; nActWSF; edge_act; startDelay; cam.strehl; NGSmagnitude];
+% T = table(values,'RowNames',rowNames);
+% writetable(T,outputDir+"\"+fileID_metadata+".txt",'Delimiter','\t','WriteRowNames',true);
 
+if exist(metadataFile, 'file')
+    delete(metadataFile)
+end
+fprintf(input_file)
+fidIn = fopen(input_file, 'r');
+fidMeta = fopen(metadataFile, 'w');
+while ~feof(fidIn)
+    line = fgetl(fidIn);
+    if ischar(line)
+        fprintf(fidMeta, '%s\n', line);
+    end
+end
+
+fprintf(fidMeta, '\n\n');
+fprintf(fidMeta, '---------------------- OUTPUTS----------------------\n\n');
+fprintf(fidMeta, 'batchItSize = %d\n', batchItSize);
+fprintf(fidMeta, 'nBatch = %d\n', nBatch);
+fprintf(fidMeta, 'LastBatchItSize = %d\n', LastBatchItSize)
+fprintf(fidMeta, 'LongStrehl = %d\n', cam.strehl);
+
+fclose(fidIn);
+fclose(fidMeta);
 %% s
 % maxValue = max(psfHistory, [], 'all');
 % fprintf('Maximum value in frame 30: %f\n', maxValue);

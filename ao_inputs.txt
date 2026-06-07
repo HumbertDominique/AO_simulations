@@ -5,11 +5,14 @@
 r0           = 3.75e-3          # [m] (double) Fried parameter
 L0           = 30               # [m] (double) Outer scale
 Asl          = [0.02]           # [m] (array of double) Layer altitude(s)
-wind         = [0.04]           # [m/s] (array of double) Wind speed(s)
+wind         = [0.04375]           # [m/s] (array of double) Wind speed(s)
 windDir      = [355/113]        # [rad] (array of double) Wind direction(s)
 
-# LGS
-NGSmagnitude = 16                # [m] (double) Laser guide star magnitude
+Sensors
+sensor_type = double             # [format] Sensor resolution: uint8, uint16, single, double. Doubles are required for simulations with noise. The value will be overwritten. There is no maping of the values for an equivalent full well capacity. The magnitude or exposure time has to be adjusted accordingly. Bothe the PSF and SHWFS sensor must be of the same type.
+
+# NGS
+NGSmagnitude = 4.5               # [m] (double) Natural guide star magnitude
 
 # DM / WFS geometry
 oversampling = 1                # [-] (uint)
@@ -20,32 +23,32 @@ D            = 0.0175           # [m] (double)
 dmStroke     = 10e-9            # [m] (double)
 
 # WFS camera
-SH_ill_thresh = 0.5           # [-] (double)
-photonNoise  = True            # [-] (bool)
-readOutNoise = 13                # [e-/px] (double)
+SH_ill_thresh = 0.5             # [-] (double)
+photonNoise  = True             # [-] (bool)
+readOutNoise = 13               # [e-/px] (double)
 
 # Timing
 samplingFreq = 500              # [Hz] (double)
-lag_c          = 1                # [cycles] lag = lag_c/samplingFreq [s]
+lag_c          = 1              # [cycles] lag = lag_c/samplingFreq [s]
 
 # Data storage
-chunksize    = 10e6           # [B] (double)
+chunksize    = 2000e6             # [B] (double)
 exposureTime = 20000            # [iterations]
 startDelay   = 100              # [iterations]
 gain_cl      = 0.5              # [-] Integrator gain
 
 # Log
 SAVEWF          = false
-SAVESLOPES      = false
-SAVELIGHTFIELD  = false
-SAVEDM          = false
-SAVEPSF         = false
-SAVERWFE        = false
+SAVESLOPES      = true
+SAVELIGHTFIELD  = true
+SAVEDM          = true
+SAVEPSF         = true
+SAVERWFE        = true
 SAVEDIFFLIMITED = true
-SAVEINSTANTDIFFLIMITED = false
+SAVEINSTANTDIFFLIMITED = true
 
 # Output file prefixes
-outputDir           = output\magnitude_16
+outputDir           = output\magnitude_14
 fileID_WF           = ao_WF_
 fileID_WFS          = ao_WFS_
 fileID_lightfield   = ao_lightfield_
