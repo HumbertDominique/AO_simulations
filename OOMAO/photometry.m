@@ -81,7 +81,7 @@ classdef photometry
         TFu_J (1.2e-6 , 0        , 1e12 )
         TFu_Y (1.0e-6 , 0        , 1e12 )
         TFu_I (0.8e-6 , 0        , 1e12 )
-        HeNe (0.632e-6 , 0.090e-6 , 3.3e12 )
+        HeNe (0.632e-6 , 0.090e-6 , 368*3.3e12 )
  end
     
 end

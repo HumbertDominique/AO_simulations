@@ -1,7 +1,7 @@
 # AO Simulation Parameters
 # Units are indicated in comments; edit values only
 
-SEED = None                       # integer or None
+SEED = 42                       # integer or None
 
 # Atmosphere
 r0           = 3.75e-3          # [m] (double) Fried parameter
@@ -14,7 +14,7 @@ Sensors
 sensor_type = double             # [format] Sensor resolution: uint8, uint16, single, double. Doubles are required for simulations with noise. The value will be overwritten. There is no maping of the values for an equivalent full well capacity. The magnitude or exposure time has to be adjusted accordingly. Bothe the PSF and SHWFS sensor must be of the same type.
 
 # NGS
-NGSmagnitude = 4               # [m] (double) Natural guide star magnitude
+NGSmagnitude = 8               # [m] (double) Natural guide star magnitude
 
 # DM / WFS geometry
 oversampling = 1                # [-] (uint)
@@ -26,7 +26,7 @@ dmStroke     = 10e-9           # [m] (double)
 
 # WFS camera
 SH_ill_thresh = 0.5             # [-] (double)
-photonNoise  = false             # [-] (bool)
+photonNoise  = True             # [-] (bool)
 readOutNoise = 0               # [e-/px] (double)
 
 # Timing

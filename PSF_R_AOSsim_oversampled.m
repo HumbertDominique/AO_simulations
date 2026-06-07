@@ -155,7 +155,7 @@ ngs = ngs.*tel*wfs;
 cam = imager();
 instantCam = imager();
 
-camera.photonNoise = photonNoise;
+instantCam.photonNoise = photonNoise;
 cam.readOutNoise = readOutNoise;
 
 instantCam.photonNoise = photonNoise;

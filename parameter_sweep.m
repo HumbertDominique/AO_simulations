@@ -6,7 +6,7 @@ close all
 mainScript = 'PSF_R_AOSsim_oversampled.m';
 
 % Parameter to sweep
-ToSweep = [4, 6, 8, 10, 12, 14]; % NGS magnitude values to sweep through
+ToSweep = [0, 2, 4, 6, 8]; % NGS magnitude values to sweep through
 sweptParameter = 'magnitude'; % automatic replacement of the correct value not implemented
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -64,6 +64,9 @@ for k = 1: nRuns
 
     fprintf(fid, '# AO Simulation Parameters\n');
     fprintf(fid, '# Units are indicated in comments; edit values only\n\n');
+
+    
+    fprintf(fid, 'SEED = 42                       # integer or None\n\n');
 
     fprintf(fid, '# Atmosphere\n');
     fprintf(fid, 'r0           = 3.75e-3          # [m] (double) Fried parameter\n');

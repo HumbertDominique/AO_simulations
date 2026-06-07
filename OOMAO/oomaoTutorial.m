@@ -68,6 +68,8 @@ ngs.magnitude = 10;
 %% readout-noise on wfs detector
 ngs.magnitude = 6;
 wfs.camera.readOutNoise = 5;
+figure
+imagesc(wfs.camera)
 
 %% resetting the detector to a noiseless one
 wfs.camera.photonNoise = false;
