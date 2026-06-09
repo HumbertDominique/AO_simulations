@@ -25,6 +25,11 @@ D            = cfg.D;
 d            = D / nL;
 dmStroke     = cfg.dmStroke;
 
+IMAGEPixelScale= cfg.IMAGEPixelScale
+if ~strcmp(IMAGEPixelScale, 'None')
+    IMAGEresolution = cfg.IMAGEPixelScale     
+end
+
 samplingFreq = cfg.samplingFreq;
 lag_c        = cfg.lag_c;
 
@@ -152,8 +157,13 @@ ngs = ngs.*tel*wfs;
 % colorbar;
 
 %% Diffraction limited performance
-cam = imager();
-instantCam = imager();
+if ~strcmp(IMAGEPixelScale, 'None')
+    cam = imager(IMAGEresolution, IMAGEPixelScale);
+    instantCam = imager(IMAGEresolution, IMAGEPixelScale);
+else
+    cam = imager();
+    instantCam = imager();
+end
 
 instantCam.photonNoise = photonNoise;
 cam.readOutNoise = readOutNoise;
@@ -396,6 +406,8 @@ fprintf(fidMeta, 'batchItSize = %d\n', batchItSize);
 fprintf(fidMeta, 'nBatch = %d\n', nBatch);
 fprintf(fidMeta, 'LastBatchItSize = %d\n', LastBatchItSize);
 fprintf(fidMeta, 'LongStrehl = %d\n', cam.strehl);
+fprintf(fidMeta, 'WFSpixelScale = %d\n', pixelScale);
+fprintf(fidMeta, 'IMGpixelScale = %d\n', instantCam.pixelScale);
 
 fclose(fidIn);
 fclose(fidMeta);

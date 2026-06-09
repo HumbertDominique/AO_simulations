@@ -6,7 +6,7 @@ close all
 mainScript = 'PSF_R_AOSsim_oversampled.m';
 
 % Parameter to sweep
-ToSweep = [0, 2, 4, 6, 8]; % NGS magnitude values to sweep through
+ToSweep = [-4, -2, 0, 2, 4, 6]; % NGS magnitude values to sweep through
 sweptParameter = 'magnitude'; % automatic replacement of the correct value not implemented
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -92,7 +92,7 @@ for k = 1: nRuns
     fprintf(fid, '# WFS camera\n');
     fprintf(fid, 'SH_ill_thresh = 0.5             # [-] (double)\n');
     fprintf(fid, 'photonNoise  = True             # [-] (bool)\n');
-    fprintf(fid, 'readOutNoise = 13               # [e-/px] (double)\n\n');
+    fprintf(fid, 'readOutNoise = 0                # [e-/px] (double)\n\n');
 
     fprintf(fid, '# Timing\n');
     fprintf(fid, 'samplingFreq = 500              # [Hz] (double)\n');
