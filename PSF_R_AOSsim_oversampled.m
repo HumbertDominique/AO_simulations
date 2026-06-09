@@ -55,6 +55,7 @@ SAVEPSF         = cfg.SAVEPSF;
 SAVERWFE        = cfg.SAVERWFE;
 SAVEDIFFLIMITED = cfg.SAVEDIFFLIMITED;
 SAVEINSTANTDIFFLIMITED = cfg.SAVEINSTANTDIFFLIMITED;
+SAVEINTERACTIONMATRIX = cfg.SAVEINTERACTIONMATRIX;
 
 outputDir           = cfg.outputDir;
 fileID_WF           = cfg.fileID_WF;
@@ -66,6 +67,7 @@ fileID_ipsf_diff_lim= cfg.fileID_ipsf_diff_lim;
 fileID_rwfe         = cfg.fileID_rwfe;
 fileID_diff_limited = cfg.fileID_diff_limited;
 fileID_metadata     = cfg.fileID_metadata;
+fileID_interaction_matrix = cfg.fileID_interaction_matrix;
 
 metadataFile = outputDir + "/metadata.txt";
 
@@ -190,6 +192,11 @@ instantScience = instantScience.*tel*instantCam;
 instantCam.referenceFrame = instantCam.frame;
 +instantScience
 
+if strcmp(IMAGEPixelScale, 'None')
+    pixelScale = cam.imgLens.pixelScale(source, tel)
+    cam.pixelScale = pixelScale;
+    instantCam.pixelScale = pixelScale ;
+end
 
 diff_limited = cam.frame;
 fprintf('Long PSF Strehl ratio ref: %4.1f\n',cam.strehl);
@@ -212,8 +219,18 @@ if SAVEINSTANTDIFFLIMITED
     +instantScience
     iPSF_strehl = type_cast(instantCam.frame,sensor_type);
     sz = size(iPSF_strehl);
-            h5create(outputDir+"\ipsf_difflim.h5", '/ipsf_difflim', sz, 'ChunkSize', [sz(1) sz(2)], 'DataType', sensor_type);
-            h5write(outputDir+"\ipsf_difflim.h5", '/ipsf_difflim', iPSF_strehl);
+    h5create(outputDir+"\ipsf_difflim.h5", '/ipsf_difflim', sz, 'ChunkSize', [sz(1) sz(2)], 'DataType', sensor_type);
+    h5write(outputDir+"\ipsf_difflim.h5", '/ipsf_difflim', iPSF_strehl);
+    clear iPSF_strehl
+    tel = tel+atm
+end
+
+if SAVEINTERACTIONMATRIX
+    if exist(outputDir+"\"+fileID_interaction_matrix+".h5", 'file'), delete(outputDir+"\"+fileID_interaction_matrix+".h5"); end
+   
+    sz = size(calibDm.M);
+    h5create(outputDir+"\"+fileID_interaction_matrix+".h5", '/interaction_matrix', sz, 'ChunkSize', [sz(1) sz(2)], 'DataType', 'double');
+    h5write(outputDir+"\"+fileID_interaction_matrix+".h5", '/interaction_matrix', calibDm.M);
     clear iPSF_strehl
     tel = tel+atm
 end
@@ -402,12 +419,11 @@ end
 
 fprintf(fidMeta, '\n\n');
 fprintf(fidMeta, '---------------------- OUTPUTS----------------------\n\n');
-fprintf(fidMeta, 'batchItSize = %d\n', batchItSize);
-fprintf(fidMeta, 'nBatch = %d\n', nBatch);
-fprintf(fidMeta, 'LastBatchItSize = %d\n', LastBatchItSize);
-fprintf(fidMeta, 'LongStrehl = %d\n', cam.strehl);
-fprintf(fidMeta, 'WFSpixelScale = %d\n', pixelScale);
-fprintf(fidMeta, 'IMGpixelScale = %d\n', instantCam.pixelScale);
+fprintf(fidMeta, 'batchItSize = %d # [-]\n', batchItSize);
+fprintf(fidMeta, 'nBatch = %d # [-]\n', nBatch);
+fprintf(fidMeta, 'LastBatchItSize = %d # [-]\n', LastBatchItSize);
+fprintf(fidMeta, 'LongStrehl = %e # [-]\n', cam.strehl);
+fprintf(fidMeta, 'IMGpixelScale = %e # [rad]\n', cam.pixelScale);
 
 fclose(fidIn);
 fclose(fidMeta);

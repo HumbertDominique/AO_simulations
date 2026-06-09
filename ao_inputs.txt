@@ -23,7 +23,7 @@ edge_act     = 0.5              # [-] (uint)
 nPx          = 27               # [-] (uint)
 D            = 0.0175           # [m] (double)
 dmStroke     = 10e-9            # [m] (double)
-IMAGEPixelScale= None        # [m] (double) or None. if None, the resolution will be 2 * nyquistSampling * fieldStopSize in unit of [FWMH_diffLimited], with fieldStopSize = 10*FWMH_diffLimited and nyquistSampling = 4 (for some reasons). the pixelscale will be 10*FWMH_diffLimited/2*nyquistSampling
+IMAGEPixelScale= None           # [FMHH rad] (double) or None. if None, the resolution will be 2 * nyquistSampling * fieldStopSize in unit of [FWMH_diffLimited], with fieldStopSize = 10*FWMH_diffLimited and nyquistSampling = 4 (for some reasons). the pixelscale will be 10*FWMH_diffLimited/2*nyquistSampling
 IMAGEresolution = 80            # [-] (uint) only valid if IMAGEPixelScale is not NONE
 
 
@@ -37,20 +37,22 @@ samplingFreq = 500              # [Hz] (double)
 lag_c          = 0              # [cycles] lag = lag_c/samplingFreq [s]
 
 # Data storage
-chunksize    = 40e6           # [B] (double)
-exposureTime = 5            # [iterations]
-startDelay   = 1              # [iterations]
+chunksize    = 4000e6           # [B] (double)
+exposureTime = 50000            # [iterations]
+startDelay   = 100              # [iterations]
 gain_cl      = 0.5              # [-] Integrator gain
 
 # Log
 SAVEWF          = false
-SAVESLOPES      = false
-SAVELIGHTFIELD  = false
-SAVEDM          = false
-SAVEPSF         = false
+SAVESLOPES      = true
+SAVELIGHTFIELD  = true
+SAVEDM          = true
+SAVEPSF         = true
 SAVERWFE        = true
-SAVEDIFFLIMITED = false
-SAVEINSTANTDIFFLIMITED = false
+SAVEDIFFLIMITED = true
+SAVEINSTANTDIFFLIMITED = true
+SAVEINTERACTIONMATRIX = true
+
 
 # Output file prefixes
 outputDir           = output
@@ -62,4 +64,5 @@ fileID_ipsf          = ao_ipsf_
 fileID_ipsf_diff_lim= ao_ipsf_difflim_
 fileID_rwfe         = ao_rwfe_
 fileID_diff_limited = ao_diff_limited_
+fileID_interaction_matrix = interaction_matrix
 fileID_metadata     = ao_metadata
