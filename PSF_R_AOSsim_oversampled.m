@@ -135,7 +135,8 @@ DM_MASK = (x - c).^2 + (y - c).^2 <= r^2;
 
 dm = deformableMirror(act_tot,'modes',bifa, 'resolution',tel.resolution, 'validActuator', DM_MASK); % valid actuators is used to ensure proper calibration matrix
 calibDm = calibration(dm,wfs,ngs,dmStroke);
-
+sz = size(calibDm.M);
+fprintf("interaction matrix size: %i",sz)
 wfs.camera.frameListener.Enabled = false;
 wfs.slopesListener.Enabled = false;
 
@@ -227,8 +228,8 @@ end
 
 if SAVEINTERACTIONMATRIX
     if exist(outputDir+"\"+fileID_interaction_matrix+".h5", 'file'), delete(outputDir+"\"+fileID_interaction_matrix+".h5"); end
-   
     sz = size(calibDm.M);
+    fprintf("interaction matrix size: %i",sz)
     h5create(outputDir+"\"+fileID_interaction_matrix+".h5", '/interaction_matrix', sz, 'ChunkSize', [sz(1) sz(2)], 'DataType', 'double');
     h5write(outputDir+"\"+fileID_interaction_matrix+".h5", '/interaction_matrix', calibDm.M);
     clear iPSF_strehl
@@ -424,6 +425,7 @@ fprintf(fidMeta, 'nBatch = %d # [-]\n', nBatch);
 fprintf(fidMeta, 'LastBatchItSize = %d # [-]\n', LastBatchItSize);
 fprintf(fidMeta, 'LongStrehl = %e # [-]\n', cam.strehl);
 fprintf(fidMeta, 'IMGpixelScale = %e # [rad]\n', cam.pixelScale);
+fprintf(fidMeta, 'interactionMarixSize = %i\n',size(calibDm.M))
 
 fclose(fidIn);
 fclose(fidMeta);
