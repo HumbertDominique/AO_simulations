@@ -25,15 +25,15 @@ D            = cfg.D;
 d            = D / nL;
 dmStroke     = cfg.dmStroke;
 
-IMAGEPixelScale= cfg.IMAGEPixelScale
+IMAGEPixelScale= cfg.IMAGEPixelScale;
 if ~strcmp(IMAGEPixelScale, 'None')
-    IMAGEresolution = cfg.IMAGEPixelScale     
+    IMAGEresolution = cfg.IMAGEPixelScale;  
 end
 
 samplingFreq = cfg.samplingFreq;
 lag_c        = cfg.lag_c;
 
-chunksize    = cfg.chunksize;
+
 exposureTime = cfg.exposureTime;
 startDelay   = cfg.startDelay;
 gain_cl      = cfg.gain_cl;
@@ -47,7 +47,13 @@ else
     sensor_type = cfg.sensor_type;
 end
 
-SAVEWF       = cfg.SAVEWF;
+
+temp = zeros(1, sensor_type);
+bytesInType = whos('temp').bytes;
+chunksize    = cfg.chunksize / bytesInType; % The bytesInType scalling is to allow the use of types other tan Uint8 (because the input is in Bytes)
+clear temp;
+
+SAVEWF          = cfg.SAVEWF;
 SAVESLOPES      = cfg.SAVESLOPES;
 SAVELIGHTFIELD  = cfg.SAVELIGHTFIELD;
 SAVEDM          = cfg.SAVEDM;
@@ -150,14 +156,6 @@ tel = tel + atm;
 % imagesc(tel)
 
 ngs = ngs.*tel*wfs;
-
-%% temp
-
-% figure;
-% imagesc(dm.validActuator);
-% axis square tight;
-% title('validActuator: true=inside pupil, false=outside pupil');
-% colorbar;
 
 %% Diffraction limited performance
 if ~strcmp(IMAGEPixelScale, 'None')
