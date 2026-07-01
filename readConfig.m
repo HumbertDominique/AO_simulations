@@ -1,3 +1,8 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 01.07.2026 - Dominique Humbert - Submition version
+% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 function cfg = readConfig(filename)
 % READCONFIG  Read a key=value parameter file into a struct.
 %
@@ -33,8 +38,7 @@ function cfg = readConfig(filename)
 
         % Parse value
         if ~isempty(val) && val(1) == '[' && val(end) == ']'
-            % Numeric array e.g. [0.02 0.05]
-            cfg.(key) = str2num(val); %#ok<ST2NM>
+            cfg.(key) = str2num(val);
         elseif strcmpi(val, 'true')
             cfg.(key) = true;
         elseif strcmpi(val, 'false')
@@ -44,7 +48,7 @@ function cfg = readConfig(filename)
             if ~isnan(num)
                 cfg.(key) = num;
             else
-                cfg.(key) = val;  % string
+                cfg.(key) = val;  
             end
         end
     end

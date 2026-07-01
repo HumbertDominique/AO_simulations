@@ -1,3 +1,9 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% AO simulations parameter sweep
+% 01.07.2026 - Dominique Humbert - Submition version
+% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 clc
 clear all
 close all

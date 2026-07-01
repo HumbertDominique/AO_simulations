@@ -1,9 +1,17 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% AO simulations for PSR-R
+% 01.07.2026 - Dominique Humbert - Submition version
+% 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % clc
 clear all
 close all
 addpath('OOMAO')
 input_file = "ao_inputs.txt"
 
+
+% Read configuration
 cfg = readConfig('ao_inputs.txt');
 SEED = cfg.SEED;
 r0           = cfg.r0;
@@ -32,7 +40,6 @@ end
 
 samplingFreq = cfg.samplingFreq;
 lag_c        = cfg.lag_c;
-
 
 exposureTime = cfg.exposureTime;
 startDelay   = cfg.startDelay;
@@ -78,7 +85,7 @@ fileID_interaction_matrix = cfg.fileID_interaction_matrix;
 metadataFile = outputDir + "/metadata.txt";
 
 
-%% code
+%% Main code
 
 ngs = source;
 
@@ -94,11 +101,8 @@ wfs = shackHartmann(nL,nRes,SH_ill_thresh);
 
 ngs = ngs.*tel*wfs;
 wfs.INIT
-
 +wfs;
-% figure
-% imagesc(wfs.camera,'parent',subplot(3,2,[1,4]))
-% slopesDisplay(wfs,'parent',subplot(3,2,[5,6]))
+
 wfs.camera.frameListener.Enabled = true;
 wfs.slopesListener.Enabled = true;
 wfs.pointingDirection = zeros(2,1);
@@ -114,16 +118,11 @@ warning('off','oomao:shackHartmann:relay')
 for kStep=u
     ngs.zenith = -tipStep*kStep;
     +ngs;
-    % drawnow
     sx(kStep+1) = median(wfs.slopes(1:end/2));
 end
 warning('on','oomao:shackHartmann:relay')
 Ox_in  = u*tipStep*constants.radian2arcsec;
 Ox_out = sx*ngs.wavelength/d/2*constants.radian2arcsec;
-
-%figure
-%plot(Ox_in,Ox_out)
-%grid
 
 slopesLinCoef = polyfit(Ox_in,Ox_out,1);
 wfs.slopesUnits = 1/slopesLinCoef(1);
@@ -132,8 +131,13 @@ wfs.pointingDirection = [];
 
 
 bifa = influenceFunction('monotonic',0.47);
+x = linspace(0,bifa.bezier(end,1),101);
+couplage = bifa.bezier;
+save('couplage.mat', 'couplage');
+
+%%
 act_tot = nActWSF + 2*edge_act;
-% Create a circular mask for the DM actuators to only allow the pupil+1 actuators to be active.
+% Circular mask for the DM actuators to only allow the pupil+1 actuators to be active. Baked-in funciton was not working with oversampling
 [x, y] = meshgrid(1:act_tot, 1:act_tot);
 c = (act_tot + 1) / 2;
 r = act_tot / 2;
@@ -149,13 +153,9 @@ wfs.slopesListener.Enabled = false;
 wfs.camera.photonNoise = photonNoise;
 wfs.camera.readOutNoise = readOutNoise;
 
-ngs = ngs.*tel;
-
-tel = tel + atm;
-% figure
-% imagesc(tel)
-
-ngs = ngs.*tel*wfs;
+ngs = ngs.*tel;     % give the source to the telescope
+tel = tel + atm;    % attach the atm.
+ngs = ngs.*tel*wfs; % attach the WFS to the sys.
 
 %% Diffraction limited performance
 if ~strcmp(IMAGEPixelScale, 'None')
@@ -171,7 +171,6 @@ cam.readOutNoise = readOutNoise;
 
 instantCam.photonNoise = photonNoise;
 instantCam.readOutNoise = readOutNoise;
-
 
 ngs = source('zenith',0,'azimuth',0,'magnitude',NGSmagnitude);     % AO source
 ngs.log.verbose = false;
@@ -204,11 +203,6 @@ fprintf('Ipsf Strehl ratio ref: %4.1f\n',instantCam.strehl);
 tel = tel + atm;
 +science
 +instantScience
-
-% fprintf('Long PSF Strehl ratio single frame init: %4.1f\n',cam.strehl);
-% fprintf('Ipsf Strehl ratio single frame init: %4.1f\n',instantCam.strehl);
-
-% Setting the the actual paths
 
 science = science.*tel*dm*cam;
 if SAVEINSTANTDIFFLIMITED
@@ -397,89 +391,6 @@ if SAVEDIFFLIMITED
     h5create(outputDir+"\"+fileID_diff_limited+".h5", '/diff_limited', sz, 'ChunkSize', [sz(1) 1]);
     h5write(outputDir+"\"+fileID_diff_limited+".h5", '/diff_limited', diff_limited);
 end
-%%
-%%
-% rowNames = {'D';'r0';'L0';'Asl';'wind';'windDir';'Exposure time';'nIteration';'gain_cl';'batchItSize';'nBatch';'LastBatchItSize'; 'oversampling'; 'nActWSF';'edge_act'; 'startDelay'; 'longStrehl'; 'magnitude'};
-% values =    [D;  r0;  L0;  Asl;  wind;  windDir;  exposureTime;   nIteration;  gain_cl;  batchItSize;  nBatch;  LastBatchItSize; oversampling; nActWSF; edge_act; startDelay; cam.strehl; NGSmagnitude];
-% T = table(values,'RowNames',rowNames);
-% writetable(T,outputDir+"\"+fileID_metadata+".txt",'Delimiter','\t','WriteRowNames',true);
-
-if exist(metadataFile, 'file')
-    delete(metadataFile)
-end
-fidIn = fopen(input_file, 'r');
-fidMeta = fopen(metadataFile, 'w');
-while ~feof(fidIn)
-    line = fgetl(fidIn);
-    if ischar(line)
-        fprintf(fidMeta, '%s\n', line);
-    end
-end
-
-fprintf(fidMeta, '\n\n');
-fprintf(fidMeta, '---------------------- OUTPUTS----------------------\n\n');
-fprintf(fidMeta, 'batchItSize = %d # [-]\n', batchItSize);
-fprintf(fidMeta, 'nBatch = %d # [-]\n', nBatch);
-fprintf(fidMeta, 'LastBatchItSize = %d # [-]\n', LastBatchItSize);
-fprintf(fidMeta, 'LongStrehl = %e # [-]\n', cam.strehl);
-fprintf(fidMeta, 'IMGpixelScale = %e # [rad]\n', cam.pixelScale);
-fprintf(fidMeta, 'interactionMarixSize = %i\n',size(calibDm.M))
-
-fclose(fidIn);
-fclose(fidMeta);
-%% s
-% maxValue = max(psfHistory, [], 'all');
-% fprintf('Maximum value in frame 30: %f\n', maxValue);
-% % figure;
-% fprintf('max long psf value: %f\n', sum(cam.frame(:)))
-
-% figure;
-% imshow(psfHistory(:,:,21), []);
-%%
-% psf_sum = sum(psfHistory(:,:,startDelay+1:end), 3);   
-
-% fprintf('Strehl ratio: %4.1f\n',cam.strehl);
-% fprintf('Strehl ratio: %4.1f\n',instantCam.strehl);
-
-% figure;
-% subplot(2,1,1);
-% plot(rwfe_waves_history, 'o-');
-% xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
-% title('AO Loop Convergence (Linear Scale)');
-% grid on;
-% subplot(2,1,2);
-% semilogy(rwfe_waves_history, 'o-');
-% xlabel('Iteration'); ylabel('Residual WF RMS (waves)');
-% title('AO Loop Convergence (Logarithmic Scale)');
-% grid on;
-
-
-% figure;
-% imagesc(cam,'parent',subplot(2,2,1));
-% title('Long Exposure PSF', 'FontSize', 12, 'FontWeight', 'bold');
-% colorbar; axis image;
-% imagesc(instantCam,'parent',subplot(2,2,2));
-% title('Instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
-% colorbar; axis image;
-% imagesc(psf_sum,'parent',subplot(2,2,3));
-% title('Long psf from instantaneous PSF', 'FontSize', 12, 'FontWeight', 'bold');
-% colorbar; axis image;
-% imagesc(cam.frame-psf_sum,'parent',subplot(2,2,4));
-% title('Long psf - iPsfSum', 'FontSize', 12, 'FontWeight', 'bold');
-% colorbar; axis image;
-% sgtitle(sprintf('AO Strehl: Long=%.2f, Instant=%.2f', cam.strehl, instantCam.strehl));
-
-
-% psf_sum_flux = sum(psf_sum(:));
-% long_psf_flux = sum(cam.frame(:));
-
-% fprintf('Flux in long exposure PSF: %.2e\n', long_psf_flux);
-% fprintf('Flux in sum of instantaneous PSFs: %.2e\n', psf_sum_flux);
-
-% flux_ratio = psf_sum_flux / long_psf_flux;
-% fprintf('Flux ratio (iPsfSum / Long PSF): %.3f\n', flux_ratio);
-
-
 %% clear
 
 if exist('WFHistory', 'var'), clear WFHistory; end
