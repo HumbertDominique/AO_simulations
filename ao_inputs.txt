@@ -7,7 +7,7 @@ SEED = 50                       # integer or None
 r0           = 3.75e-3          # [m] (double) Fried parameter
 L0           = 30               # [m] (double) Outer scale
 Asl          = [0.02]           # [m] (array of double) Layer altitude(s)
-wind         = [0.04375]        # [m/s] (array of double) Wind speed(s)
+wind         = [.3]        # [m/s] (array of double) Wind speed(s)
 windDir      = [355/113]        # [rad] (array of double) Wind direction(s)
 
 Sensors
@@ -37,21 +37,21 @@ samplingFreq = 500              # [Hz] (double)
 lag_c          = 0              # [cycles] lag = lag_c/samplingFreq [s]
 
 # Data storage
-chunksize    = 10e6           # [MB] (double) This will limit the file size. the lightfiled will reach this value while other will be smaller. This will work as long as the SHWFS has the higest resolution of all imagers. The case where the chucksize is smaller than a single image is not handeled
-exposureTime = 50            # [iterations]
+chunksize    = 1000e6           # [MB] (double) This will limit the file size. the lightfiled will reach this value while other will be smaller. This will work as long as the SHWFS has the higest resolution of all imagers. The case where the chucksize is smaller than a single image is not handeled
+exposureTime = 100            # [iterations]
 startDelay   = 1              # [iterations]
 gain_cl      = 0.5              # [-] Integrator gain
 
 # Log
 SAVEWF          = false
-SAVESLOPES      = true
-SAVELIGHTFIELD  = true
-SAVEDM          = true
+SAVESLOPES      = false
+SAVELIGHTFIELD  = false
+SAVEDM          = false
 SAVEPSF         = true
 SAVERWFE        = true
 SAVEDIFFLIMITED = true
 SAVEINSTANTDIFFLIMITED = true
-SAVEINTERACTIONMATRIX = true
+SAVEINTERACTIONMATRIX = false
 
 
 # Output file prefixes

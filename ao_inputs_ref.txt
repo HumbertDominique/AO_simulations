@@ -33,7 +33,7 @@ lag_c          = 0              # [cycles] lag = lag_c/samplingFreq [s]
 
 # Data storage
 chunksize    = 10e6             # [B] (double)
-exposureTime = 20            # [iterations]
+exposureTime = 2            # [iterations]
 startDelay   = 1              # [iterations]
 gain_cl      = 0.5              # [-] Integrator gain
 

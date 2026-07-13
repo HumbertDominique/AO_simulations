@@ -391,6 +391,30 @@ if SAVEDIFFLIMITED
     h5create(outputDir+"\"+fileID_diff_limited+".h5", '/diff_limited', sz, 'ChunkSize', [sz(1) 1]);
     h5write(outputDir+"\"+fileID_diff_limited+".h5", '/diff_limited', diff_limited);
 end
+
+if exist(metadataFile, 'file')
+    delete(metadataFile)
+end
+fidIn = fopen(input_file, 'r');
+fidMeta = fopen(metadataFile, 'w');
+while ~feof(fidIn)
+    line = fgetl(fidIn);
+    if ischar(line)
+        fprintf(fidMeta, '%s\n', line);
+    end
+end
+
+fprintf(fidMeta, '\n\n');
+fprintf(fidMeta, '---------------------- OUTPUTS----------------------\n\n');
+fprintf(fidMeta, 'batchItSize = %d # [-]\n', batchItSize);
+fprintf(fidMeta, 'nBatch = %d # [-]\n', nBatch);
+fprintf(fidMeta, 'LastBatchItSize = %d # [-]\n', LastBatchItSize);
+fprintf(fidMeta, 'LongStrehl = %e # [-]\n', cam.strehl);
+fprintf(fidMeta, 'IMGpixelScale = %e # [rad]\n', cam.pixelScale);
+fprintf(fidMeta, 'interactionMarixSize = %i\n',size(calibDm.M));
+
+fclose(fidIn);
+fclose(fidMeta);
 %% clear
 
 if exist('WFHistory', 'var'), clear WFHistory; end
